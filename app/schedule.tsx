@@ -4,8 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { checkCalendarPermission } from '../services/permissions';
 import { useTheme } from '../context/ThemeContext';
+import { checkCalendarPermission } from '../services/permissions';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -115,15 +115,6 @@ export default function Schedule() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
-        <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
-          📅 Schedule
-        </Text>
-        <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
-          Your week at a glance
-        </Text>
-      </View>
-
       <View style={styles.content}>
 
         {/* Calendar events section */}
@@ -288,7 +279,7 @@ const styles = StyleSheet.create({
   header: { paddingTop: 40, paddingBottom: 30, paddingHorizontal: 20 },
   headerTitle: { fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
-  content: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
+  content: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 },
   section: { borderRadius: 14, padding: 16, marginTop: 14 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontWeight: '700' },
