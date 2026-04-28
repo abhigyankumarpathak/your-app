@@ -9,10 +9,18 @@ export const PERMISSION_TYPES = {
   CALENDAR: 'calendar',
 };
 
+const isCalendarGranted = (status: string) => status === 'granted' || status === 'limited';
+
 export const requestCalendarPermission = async (): Promise<boolean> => {
   try {
+    const current = await Calendar.getCalendarPermissionsAsync();
+    if (isCalendarGranted(current.status)) return true;
+    if (current.canAskAgain === false) {
+      Linking.openSettings();
+      return false;
+    }
     const { status } = await Calendar.requestCalendarPermissionsAsync();
-    return status === 'granted';
+    return isCalendarGranted(status);
   } catch (error) {
     console.log('Calendar permission error:', error);
     return false;
@@ -22,7 +30,7 @@ export const requestCalendarPermission = async (): Promise<boolean> => {
 export const checkCalendarPermission = async (): Promise<boolean> => {
   try {
     const { status } = await Calendar.getCalendarPermissionsAsync();
-    return status === 'granted';
+    return isCalendarGranted(status);
   } catch {
     return false;
   }

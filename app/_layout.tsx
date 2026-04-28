@@ -1,11 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { Drawer } from 'expo-router/drawer';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, DeviceEventEmitter, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import Onboarding from './onboarding';
+
+// Must be set at app root so foreground notifications show alerts
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 function DrawerLayout() {
   const { accentColor } = useTheme();
@@ -69,6 +81,14 @@ export default function RootLayout() {
     AsyncStorage.getItem('focusOnboardingComplete').then((val) => {
       setOnboardingDone(val === 'true');
     });
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'Focus Reminders',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#6366F1',
+      });
+    }
   }, []);
 
   useEffect(() => {

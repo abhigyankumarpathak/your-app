@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert, DeviceEventEmitter, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, DeviceEventEmitter, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
+import { cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
+import { checkCalendarPermission, requestCalendarPermission } from '../services/permissions';
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];
@@ -38,9 +40,93 @@ export default function Settings() {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [profileSaved, setProfileSaved] = useState(false);
 
+  // Permission settings
+  const [calendarPermission, setCalendarPermission] = useState(false);
+
+  // Notification settings
+  const [notifPermission, setNotifPermission] = useState(false);
+  const [studyReminderOn, setStudyReminderOn] = useState(false);
+  const [studyReminderTime, setStudyReminderTime] = useState('16:00');
+  const [bedtimeReminderOn, setBedtimeReminderOn] = useState(false);
+  const [bedtimeReminderTime, setBedtimeReminderTime] = useState('22:00');
+  const [streakReminderOn, setStreakReminderOn] = useState(false);
+
   useEffect(() => {
     loadProfile();
+    loadNotifSettings();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkCalendarPermission().then(setCalendarPermission);
+        hasNotificationPermission().then(granted => {
+          setNotifPermission(granted);
+          if (granted) AsyncStorage.setItem('focusNotifPermission', 'true');
+        });
+      }
+    });
+    return () => sub.remove();
   }, []);
+
+  const loadNotifSettings = async () => {
+    checkCalendarPermission().then(setCalendarPermission);
+    // Always read actual system permission — AsyncStorage can be stale
+    hasNotificationPermission().then(granted => {
+      setNotifPermission(granted);
+      if (granted) AsyncStorage.setItem('focusNotifPermission', 'true');
+    });
+    try {
+      const [sOn, sTime, bOn, bTime, strOn] = await AsyncStorage.multiGet([
+        'focusStudyReminderOn', 'focusStudyReminderTime',
+        'focusBedtimeReminderOn', 'focusBedtimeReminderTime', 'focusStreakReminderOn',
+      ]);
+      setStudyReminderOn(sOn[1] === 'true');
+      if (sTime[1]) setStudyReminderTime(sTime[1]);
+      setBedtimeReminderOn(bOn[1] === 'true');
+      if (bTime[1]) setBedtimeReminderTime(bTime[1]);
+      setStreakReminderOn(strOn[1] === 'true');
+    } catch {}
+  };
+
+  const handleRequestNotifPermission = async () => {
+    const granted = await requestNotificationPermission();
+    setNotifPermission(granted);
+    await AsyncStorage.setItem('focusNotifPermission', String(granted));
+  };
+
+  const parseTime = (t: string): [number, number] => {
+    const [h, m] = t.split(':').map(Number);
+    return [isNaN(h) ? 8 : h, isNaN(m) ? 0 : m];
+  };
+
+  const toggleStudyReminder = async (val: boolean) => {
+    setStudyReminderOn(val);
+    await AsyncStorage.setItem('focusStudyReminderOn', String(val));
+    if (val) { const [h, m] = parseTime(studyReminderTime); await scheduleStudyReminder(h, m); }
+    else await cancelStudyReminder();
+  };
+
+  const toggleBedtimeReminder = async (val: boolean) => {
+    setBedtimeReminderOn(val);
+    await AsyncStorage.setItem('focusBedtimeReminderOn', String(val));
+    if (val) { const [h, m] = parseTime(bedtimeReminderTime); await scheduleBedtimeReminder(h, m); }
+    else await cancelBedtimeReminder();
+  };
+
+  const toggleStreakReminder = async (val: boolean) => {
+    setStreakReminderOn(val);
+    await AsyncStorage.setItem('focusStreakReminderOn', String(val));
+    if (val) await scheduleStreakReminder();
+    else await cancelStreakReminder();
+  };
+
+  const applyStudyTime = async () => {
+    await AsyncStorage.setItem('focusStudyReminderTime', studyReminderTime);
+    if (studyReminderOn) { const [h, m] = parseTime(studyReminderTime); await scheduleStudyReminder(h, m); }
+  };
+
+  const applyBedtimeTime = async () => {
+    await AsyncStorage.setItem('focusBedtimeReminderTime', bedtimeReminderTime);
+    if (bedtimeReminderOn) { const [h, m] = parseTime(bedtimeReminderTime); await scheduleBedtimeReminder(h, m); }
+  };
 
   const loadProfile = async () => {
     try {
@@ -77,18 +163,14 @@ export default function Settings() {
           style: 'destructive',
           onPress: async () => {
             try {
+              await cancelAllNotifications();
               await AsyncStorage.multiRemove([
-                'focusOnboardingComplete',
-                'focusUserProfile',
-                'focusSessions',
-                'focusTasks',
-                'focusActivities',
-                'focusWellness',
-                'focusGoals',
-                'focusThemeColor',
-                'focusThemePreset',
-                'focusFontSize',
-                'focusEnableAnimations',
+                'focusOnboardingComplete', 'focusUserProfile', 'focusSessions',
+                'focusTasks', 'focusActivities', 'focusWellness', 'focusGoals',
+                'focusThemeColor', 'focusThemePreset', 'focusFontSize', 'focusEnableAnimations',
+                'focusStreak', 'focusXP', 'focusAchievements', 'focusPomodoroEnabled',
+                'focusNotifPermission', 'focusStudyReminderOn', 'focusStudyReminderTime',
+                'focusBedtimeReminderOn', 'focusBedtimeReminderTime', 'focusStreakReminderOn',
               ]);
               DeviceEventEmitter.emit('RESET_APP');
             } catch (_) {
@@ -374,13 +456,105 @@ export default function Settings() {
             <Switch
               value={enableAnimations}
               onValueChange={toggleAnimations}
-              trackColor={{ false: presetValues.bgSecondary, true: presetValues.text }}
-              thumbColor={enableAnimations ? presetValues.text : presetValues.textSecondary}
+              trackColor={{ false: presetValues.bgSecondary, true: '#10B981' }}
+              thumbColor="#fff"
             />
           </View>
           <Text style={[styles.subtext, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
             {enableAnimations ? 'Smooth animations enabled' : 'Animations disabled for faster performance'}
           </Text>
+        </View>
+
+        {/* ── Notifications ─────────────────────────────────────────── */}
+        <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+            🔔 Notifications
+          </Text>
+
+          {/* Calendar row — always shown */}
+          <View style={styles.notifRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>📅 Calendar Access</Text>
+              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Used to display your schedule</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.permStatusBtn, { backgroundColor: calendarPermission ? '#10B98120' : '#6366F120', borderColor: calendarPermission ? '#10B981' : '#6366F1' }]}
+              onPress={async () => { const g = await requestCalendarPermission(); setCalendarPermission(g); }}
+            >
+              <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: calendarPermission ? '#10B981' : '#6366F1' }]}>
+                {calendarPermission ? '✓ Granted' : 'Allow'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
+
+          {/* Notification permission row — same style as Calendar */}
+          <View style={styles.notifRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>🔔 Notification Access</Text>
+              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Study reminders & streak alerts</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.permStatusBtn, { backgroundColor: notifPermission ? '#10B98120' : '#6366F120', borderColor: notifPermission ? '#10B981' : '#6366F1' }]}
+              onPress={handleRequestNotifPermission}
+            >
+              <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: notifPermission ? '#10B981' : '#6366F1' }]}>
+                {notifPermission ? '✓ Granted' : 'Allow'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {notifPermission && (
+            <>
+              <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
+              {/* Study reminder */}
+              <View style={styles.notifRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>📚 Study Reminder</Text>
+                  <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Daily reminder to start studying</Text>
+                </View>
+                <Switch value={studyReminderOn} onValueChange={toggleStudyReminder}
+                  trackColor={{ false: presetValues.bgSecondary, true: '#6366F1' }} />
+              </View>
+              {studyReminderOn && (
+                <View style={styles.timeRow}>
+                  <TextInput style={[styles.timeInput, { backgroundColor: presetValues.bgSecondary, color: presetValues.text, borderColor: '#6366F1', fontSize: fontSizes.base }]}
+                    value={studyReminderTime} onChangeText={setStudyReminderTime} placeholder="HH:MM"
+                    placeholderTextColor={presetValues.textSecondary} keyboardType="numbers-and-punctuation" onBlur={applyStudyTime} />
+                  <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>24h format</Text>
+                </View>
+              )}
+
+              {/* Bedtime reminder */}
+              <View style={[styles.notifRow, { marginTop: 12 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>😴 Bedtime Reminder</Text>
+                  <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Nudge to log sleep and wind down</Text>
+                </View>
+                <Switch value={bedtimeReminderOn} onValueChange={toggleBedtimeReminder}
+                  trackColor={{ false: presetValues.bgSecondary, true: '#6366F1' }} />
+              </View>
+              {bedtimeReminderOn && (
+                <View style={styles.timeRow}>
+                  <TextInput style={[styles.timeInput, { backgroundColor: presetValues.bgSecondary, color: presetValues.text, borderColor: '#6366F1', fontSize: fontSizes.base }]}
+                    value={bedtimeReminderTime} onChangeText={setBedtimeReminderTime} placeholder="HH:MM"
+                    placeholderTextColor={presetValues.textSecondary} keyboardType="numbers-and-punctuation" onBlur={applyBedtimeTime} />
+                  <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>24h format</Text>
+                </View>
+              )}
+
+              {/* Streak reminder */}
+              <View style={[styles.notifRow, { marginTop: 12 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>🔥 Streak At Risk (8 PM)</Text>
+                  <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Alert if you haven't studied yet today</Text>
+                </View>
+                <Switch value={streakReminderOn} onValueChange={toggleStreakReminder}
+                  trackColor={{ false: presetValues.bgSecondary, true: '#6366F1' }} />
+              </View>
+            </>
+          )}
         </View>
 
         {/* ── Tips ──────────────────────────────────────────────────── */}
@@ -469,6 +643,14 @@ const styles = StyleSheet.create({
   // Animations
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subtext: { fontWeight: '500' },
+
+  // Notifications / Permissions
+  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  notifSub: { fontWeight: '500', marginTop: 1 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 4 },
+  timeInput: { borderRadius: 8, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 8, width: 90 },
+  permStatusBtn: { borderRadius: 10, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 6 },
+  divider: { height: 1 },
 
   // Info
   infoSection: { borderRadius: 14, padding: 16, marginTop: 20, marginBottom: 20, borderWidth: 1 },

@@ -166,6 +166,7 @@ const studyCardStyles = StyleSheet.create({
 export default function Goals() {
   const { accentColor, presetValues, fontSizes } = useTheme();
   const [goals, setGoals] = useState<SmartGoal[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<GoalPeriod>('daily');
   const [showCreate, setShowCreate] = useState(false);
   const [showDetail, setShowDetail] = useState<SmartGoal | null>(null);
@@ -177,11 +178,10 @@ export default function Goals() {
 
   useEffect(() => { loadGoals(); loadUser(); }, []);
 
-  // Reload study hours every time this screen comes into focus so the
-  // "Hours Studied Today" goal card always reflects current session data.
   useFocusEffect(
     useCallback(() => {
       loadTodayStudy();
+      AsyncStorage.getItem('focusTasks').then((d) => { if (d) setTasks(JSON.parse(d)); });
     }, [])
   );
 
@@ -344,7 +344,8 @@ export default function Goals() {
             {pending.map((g) => (
               <GoalCard key={g.id} goal={g} color={cfg.color} presetValues={presetValues} fontSizes={fontSizes}
                 onToggle={() => toggleComplete(g.id)} onDelete={() => deleteGoal(g.id)}
-                onProgress={(v: number) => updateProgress(g.id, v)} onPress={() => setShowDetail(g)} />
+                onProgress={(v: number) => updateProgress(g.id, v)} onPress={() => setShowDetail(g)}
+                linkedTasks={tasks.filter((t: any) => t.goalId === g.id)} />
             ))}
           </>
         )}
@@ -357,7 +358,8 @@ export default function Goals() {
             {done.map((g) => (
               <GoalCard key={g.id} goal={g} color={cfg.color} presetValues={presetValues} fontSizes={fontSizes}
                 onToggle={() => toggleComplete(g.id)} onDelete={() => deleteGoal(g.id)}
-                onProgress={(v: number) => updateProgress(g.id, v)} onPress={() => setShowDetail(g)} dimmed />
+                onProgress={(v: number) => updateProgress(g.id, v)} onPress={() => setShowDetail(g)}
+                linkedTasks={tasks.filter((t: any) => t.goalId === g.id)} dimmed />
             ))}
           </>
         )}
@@ -393,7 +395,8 @@ export default function Goals() {
       <Modal visible={!!showDetail} animationType="slide" presentationStyle="pageSheet">
         {showDetail && (
           <DetailModal goal={showDetail} color={PERIOD_CONFIG[showDetail.period].color}
-            presetValues={presetValues} fontSizes={fontSizes} onClose={() => setShowDetail(null)} />
+            presetValues={presetValues} fontSizes={fontSizes} onClose={() => setShowDetail(null)}
+            linkedTasks={tasks.filter((t: any) => t.goalId === showDetail.id)} />
         )}
       </Modal>
     </View>
@@ -401,9 +404,10 @@ export default function Goals() {
 }
 
 // ─── Goal Card ────────────────────────────────────────────────────────────────
-function GoalCard({ goal, color, presetValues, fontSizes, onToggle, onDelete, onProgress, onPress, dimmed }: any) {
+function GoalCard({ goal, color, presetValues, fontSizes, onToggle, onDelete, onProgress, onPress, dimmed, linkedTasks = [] }: any) {
   const cat = CATEGORIES.find((c) => c.label === goal.category);
   const smartFilled = SMART_FIELDS.filter((f) => (goal as any)[f.key]?.trim()).length;
+  const doneTaskCount = linkedTasks.filter((t: any) => t.done).length;
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor, borderLeftColor: goal.completed ? presetValues.textSecondary : color, opacity: dimmed ? 0.6 : 1 }]}
@@ -418,9 +422,18 @@ function GoalCard({ goal, color, presetValues, fontSizes, onToggle, onDelete, on
           <Text style={[styles.cardTitle, { color: presetValues.text, fontSize: fontSizes.base + 1, textDecorationLine: goal.completed ? 'line-through' : 'none' }]}>
             {cat?.icon} {goal.title}
           </Text>
-          <Text style={[styles.cardMeta, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
-            {goal.category} · {goal.timeBound || 'No deadline'} · SMART {smartFilled}/5
-          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text style={[styles.cardMeta, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+              {goal.category} · {goal.timeBound || 'No deadline'} · SMART {smartFilled}/5
+            </Text>
+            {linkedTasks.length > 0 && (
+              <View style={[styles.taskBadge, { backgroundColor: color + '18', borderColor: color }]}>
+                <Text style={[styles.taskBadgeText, { color, fontSize: fontSizes.base - 2 }]}>
+                  🔗 {doneTaskCount}/{linkedTasks.length} tasks
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
         <TouchableOpacity onPress={onDelete}>
           <Ionicons name="trash-outline" size={18} color={presetValues.textSecondary} />
@@ -561,7 +574,7 @@ function CreateModal({ draft, setDraft, step, setStep, color, presetValues, font
 }
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
-function DetailModal({ goal, color, presetValues, fontSizes, onClose }: any) {
+function DetailModal({ goal, color, presetValues, fontSizes, onClose, linkedTasks = [] }: any) {
   const cat = CATEGORIES.find((c) => c.label === goal.category);
   return (
     <View style={[styles.modal, { backgroundColor: presetValues.bg }]}>
@@ -606,6 +619,22 @@ function DetailModal({ goal, color, presetValues, fontSizes, onClose }: any) {
             {goal.completed ? '✅ Completed!' : '⏳ In Progress'}
           </Text>
         </View>
+
+        {linkedTasks.length > 0 && (
+          <View style={[styles.progBox, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
+            <Text style={[styles.progBoxTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
+              🔗 Linked Tasks ({linkedTasks.filter((t: any) => t.done).length}/{linkedTasks.length} done)
+            </Text>
+            {linkedTasks.map((t: any) => (
+              <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <Ionicons name={t.done ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={t.done ? '#10B981' : presetValues.textSecondary} />
+                <Text style={[{ color: t.done ? presetValues.textSecondary : presetValues.text, fontSize: fontSizes.base - 1, fontWeight: '500', textDecorationLine: t.done ? 'line-through' : 'none', flex: 1 }]}>
+                  {t.title}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -699,7 +728,9 @@ const styles = StyleSheet.create({
   smartDotLetter: { color: '#fff', fontSize: 16, fontWeight: '800' },
   smartRowLabel: { fontWeight: '700', marginBottom: 4 },
   smartRowVal: { fontWeight: '500', lineHeight: 20 },
-  progBox: { borderRadius: 14, padding: 16, borderWidth: 1, marginTop: 6, marginBottom: 40, gap: 10 },
+  progBox: { borderRadius: 14, padding: 16, borderWidth: 1, marginTop: 6, marginBottom: 10, gap: 10 },
   progBoxTitle: { fontWeight: '700' },
   progStatus: { fontWeight: '600' },
+  taskBadge: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1 },
+  taskBadgeText: { fontWeight: '600' },
 });

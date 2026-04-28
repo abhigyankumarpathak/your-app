@@ -34,6 +34,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app.png",
+          "color": "#6366F1"
+        }
+      ],
+      [
         "expo-calendar",
         {
           "calendarPermission": "Allow Focus to access your calendar to show your schedule.",

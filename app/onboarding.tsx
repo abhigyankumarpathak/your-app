@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -12,7 +12,8 @@ import {
     View,
     useWindowDimensions
 } from 'react-native';
-import { openHealthSettings, openScreenTimeSettings, requestCalendarPermission } from '../services/permissions';
+import { checkCalendarPermission, openHealthSettings, openScreenTimeSettings, requestCalendarPermission } from '../services/permissions';
+import { hasNotificationPermission, requestNotificationPermission } from '../services/notifications';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -45,6 +46,13 @@ export default function Onboarding({ onComplete }: Props) {
   const [step, setStep] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [calendarGranted, setCalendarGranted] = useState(false);
+  const [notifGranted, setNotifGranted] = useState(false);
+
+  // Pre-populate permission states in case they were already granted
+  useEffect(() => {
+    checkCalendarPermission().then(setCalendarGranted);
+    hasNotificationPermission().then(setNotifGranted);
+  }, []);
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     grade: '',
@@ -476,6 +484,28 @@ export default function Onboarding({ onComplete }: Props) {
                   onPress={openScreenTimeSettings}
                 >
                   <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>Open Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Notifications */}
+            <View style={[styles.permCard, { borderColor: notifGranted ? '#10B981' : '#E5E7EB' }]}>
+              <View style={styles.permRow}>
+                <Text style={{ fontSize: responsiveFontSize(22) }}>🔔</Text>
+                <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
+                  <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Notifications</Text>
+                  <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>Study reminders & streak alerts</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.permBtn, { backgroundColor: notifGranted ? '#10B981' : '#6366F1' }]}
+                  onPress={async () => {
+                    const granted = await requestNotificationPermission();
+                    setNotifGranted(granted);
+                  }}
+                >
+                  <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>
+                    {notifGranted ? '✓ Granted' : 'Allow'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
