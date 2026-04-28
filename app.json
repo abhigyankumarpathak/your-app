@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Focus",
+    "slug": "focus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app.png",
+    "scheme": "focus",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "This app needs access to your health data to track sleep and screen time",
+        "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "QUERY_ALL_PACKAGES"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/app1.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/app.png",
+          "imageWidth": 350,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
