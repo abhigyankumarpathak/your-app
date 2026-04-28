@@ -12,6 +12,7 @@ import {
     View,
     useWindowDimensions
 } from 'react-native';
+import { openHealthSettings, openScreenTimeSettings, requestCalendarPermission } from '../services/permissions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ export default function Onboarding({ onComplete }: Props) {
   const dimensions = useWindowDimensions();
   const [step, setStep] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const [calendarGranted, setCalendarGranted] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     grade: '',
@@ -206,6 +208,7 @@ export default function Onboarding({ onComplete }: Props) {
     { title: "About You", subtitle: "Tell us a bit about your school life" },
     { title: "Your Subjects", subtitle: "What do you study? Pick all that apply" },
     { title: "Your Goals", subtitle: "What are you focusing on this year?" },
+    { title: "Allow Access 🔒", subtitle: "Let Focus work smarter for you" },
     { title: "Almost there! 🚀", subtitle: "One last thing" },
   ];
 
@@ -260,7 +263,13 @@ export default function Onboarding({ onComplete }: Props) {
     if (step === 1) return profile.grade.length > 0;
     if (step === 2) return profile.subjects.length > 0;
     if (step === 3) return profile.focusAreas.length > 0;
+    // step 4 (permissions) and step 5 (study goal) are always advanceable
     return true;
+  };
+
+  const handleCalendarRequest = async () => {
+    const granted = await requestCalendarPermission();
+    setCalendarGranted(granted);
   };
 
   return (
@@ -408,7 +417,75 @@ export default function Onboarding({ onComplete }: Props) {
             </View>
           </View>
 
-          {/* Step 4 — Study Goal & Done */}
+          {/* Step 4 — Permissions */}
+          <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
+            <View style={styles.emojiContainer}>
+              <Text style={dynamicStyles.bigEmoji}>🔒</Text>
+            </View>
+            <Text style={dynamicStyles.stepTitle}>{STEPS[4].title}</Text>
+            <Text style={dynamicStyles.stepSubtitle}>{STEPS[4].subtitle}</Text>
+
+            {/* Calendar */}
+            <View style={[styles.permCard, { borderColor: calendarGranted ? '#10B981' : '#E5E7EB' }]}>
+              <View style={styles.permRow}>
+                <Text style={{ fontSize: responsiveFontSize(22) }}>📅</Text>
+                <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
+                  <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Calendar</Text>
+                  <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>See your schedule in the app</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.permBtn, { backgroundColor: calendarGranted ? '#10B981' : '#6366F1' }]}
+                  onPress={handleCalendarRequest}
+                >
+                  <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>
+                    {calendarGranted ? '✓ Granted' : 'Allow'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Health */}
+            <View style={[styles.permCard, { borderColor: '#E5E7EB' }]}>
+              <View style={styles.permRow}>
+                <Text style={{ fontSize: responsiveFontSize(22) }}>🏥</Text>
+                <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
+                  <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Health App</Text>
+                  <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>Track sleep & fitness data</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.permBtn, { backgroundColor: '#6366F1' }]}
+                  onPress={openHealthSettings}
+                >
+                  <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>Open Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Screen Time */}
+            <View style={[styles.permCard, { borderColor: '#E5E7EB' }]}>
+              <View style={styles.permRow}>
+                <Text style={{ fontSize: responsiveFontSize(22) }}>📱</Text>
+                <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
+                  <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Screen Time</Text>
+                  <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>
+                    {Platform.OS === 'ios' ? 'iOS Screen Time in Settings' : 'Digital Wellbeing in Settings'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.permBtn, { backgroundColor: '#6366F1' }]}
+                  onPress={openScreenTimeSettings}
+                >
+                  <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>Open Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={[dynamicStyles.hintText, { textAlign: 'center', marginTop: responsiveSpacing(10) }]}>
+              You can change these in Settings anytime.
+            </Text>
+          </View>
+
+          {/* Step 5 — Study Goal & Done */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
             <View style={styles.emojiContainer}>
               <Text style={dynamicStyles.bigEmoji}>🚀</Text>
@@ -563,5 +640,27 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+  },
+  permCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  permRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  permBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  permBtnText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });

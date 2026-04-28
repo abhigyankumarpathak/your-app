@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -174,7 +175,15 @@ export default function Goals() {
   const [studyGoalHours, setStudyGoalHours] = useState('2');
   const [todayStudyHours, setTodayStudyHours] = useState(0);
 
-  useEffect(() => { loadGoals(); loadUser(); loadTodayStudy(); }, []);
+  useEffect(() => { loadGoals(); loadUser(); }, []);
+
+  // Reload study hours every time this screen comes into focus so the
+  // "Hours Studied Today" goal card always reflects current session data.
+  useFocusEffect(
+    useCallback(() => {
+      loadTodayStudy();
+    }, [])
+  );
 
   const loadUser = async () => {
     try {

@@ -1,12 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
-function StatCard({ label, value, unit, icon, color }: any) {
+function StatCard({ label, value, unit, icon, color, route }: any) {
   const { fontSizes, presetValues } = useTheme();
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={() => router.push(route)}
       style={[
         styles.card,
         {
@@ -27,7 +30,8 @@ function StatCard({ label, value, unit, icon, color }: any) {
       <Text style={[styles.cardLabel, { fontSize: fontSizes.base - 1, color: presetValues.textSecondary }]}>
         {label}
       </Text>
-    </View>
+      <Text style={[styles.cardArrow, { color: presetValues.textSecondary }]}>→</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -111,34 +115,10 @@ export default function Dashboard() {
           📊 Today's Overview
         </Text>
 
-        <StatCard
-          label="Study Time"
-          value={stats.studyHours}
-          unit="hours"
-          icon="🎯"
-          color={accentColor}
-        />
-        <StatCard
-          label="Tasks Pending"
-          value={stats.tasks}
-          unit="tasks"
-          icon="✓"
-          color={accentColor}
-        />
-        <StatCard
-          label="Sleep Last Night"
-          value={stats.sleepHours}
-          unit="hours"
-          icon="😴"
-          color={accentColor}
-        />
-        <StatCard
-          label="Screen Time"
-          value={stats.screenTime}
-          unit="hours"
-          icon="📵"
-          color={accentColor}
-        />
+        <StatCard label="Study Time" value={stats.studyHours} unit="hours" icon="🎯" color={accentColor} route="/study" />
+        <StatCard label="Tasks Pending" value={stats.tasks} unit="tasks" icon="✓" color={accentColor} route="/tasks" />
+        <StatCard label="Sleep Last Night" value={stats.sleepHours} unit="hours" icon="😴" color={accentColor} route="/wellness" />
+        <StatCard label="Screen Time" value={stats.screenTime} unit="hours" icon="📵" color={accentColor} route="/screentime" />
 
         <View
           style={[
@@ -196,6 +176,7 @@ const styles = StyleSheet.create({
   cardValue: { fontWeight: 'bold', marginBottom: 4 },
   cardUnit: { fontWeight: 'normal' },
   cardLabel: { fontWeight: '500' },
+  cardArrow: { position: 'absolute', right: 14, top: '50%', fontSize: 16, fontWeight: '600' },
   tipBox: { borderRadius: 12, padding: 14, marginTop: 20, borderWidth: 1 },
   tipTitle: { marginBottom: 8 },
   tipText: { fontWeight: '500' },

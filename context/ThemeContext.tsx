@@ -1,6 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+interface ThemeContextType {
+  colorName: string;
+  accentColor: string;
+  setTheme: (name: string) => Promise<void>;
+  preset: string;
+  setPreset: (name: string) => Promise<void>;
+  presetValues: { bg: string; bgSecondary: string; cardBg: string; text: string; textSecondary: string; borderColor: string };
+  fontSize: string;
+  setFontSize: (name: string) => Promise<void>;
+  fontSizes: { base: number; title: number; heading: number };
+  enableAnimations: boolean;
+  toggleAnimations: () => Promise<void>;
+}
+
 export const THEME_COLORS = {
   Blue: '#3B82F6',
   Green: '#10B981',
@@ -45,7 +59,7 @@ export const FONT_SIZES = {
   Large: { base: 17, title: 19, heading: 28 },
 };
 
-const ThemeContext = createContext();
+const ThemeContext = createContext<ThemeContextType>({} as ThemeContextType);
 
 export function ThemeProvider({ children }) {
   const [colorName, setColorName] = useState('Blue');

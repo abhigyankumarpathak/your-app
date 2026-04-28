@@ -23,7 +23,8 @@
       "permissions": [
         "READ_CALENDAR",
         "WRITE_CALENDAR",
-        "QUERY_ALL_PACKAGES"
+        "QUERY_ALL_PACKAGES",
+        "PACKAGE_USAGE_STATS"
       ]
     },
     "web": {
@@ -32,6 +33,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow Focus to access your calendar to show your schedule.",
+          "remindersPermission": "Allow Focus to access your reminders."
+        }
+      ],
       [
         "expo-splash-screen",
         {

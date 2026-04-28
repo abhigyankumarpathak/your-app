@@ -43,6 +43,10 @@ function DrawerLayout() {
         options={{ title: 'Wellness', drawerIcon: ({ color }) => <Ionicons name="heart" size={22} color={color} /> }}
       />
       <Drawer.Screen
+        name="screentime"
+        options={{ title: 'Screen Time', drawerIcon: ({ color }) => <Ionicons name="phone-portrait" size={22} color={color} /> }}
+      />
+      <Drawer.Screen
         name="settings"
         options={{ title: 'Settings', drawerIcon: ({ color }) => <Ionicons name="settings" size={22} color={color} /> }}
       />
