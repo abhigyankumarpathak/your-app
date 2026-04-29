@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit *)",
+            "command": "printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"You just ran git commit. If this commit included significant new features or changed existing ones, please update FEATURES.md at the project root to reflect the current state of the app.\"}}'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

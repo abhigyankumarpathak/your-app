@@ -1,234 +1,208 @@
-# Focus App - Enhanced Version
+# Focus App — Feature Reference
 
-Your app has been upgraded with powerful new features to make studying more fun and engaging! 🎯
-
-## ✨ New Features
-
-### 1. **Cross-Platform Compatibility**
-- ✅ Fully optimized for **iPhone** and **Android**
-- ✅ Responsive design that works on all screen sizes
-- ✅ Platform-specific optimizations for smooth performance
-
-### 2. **Permission System** 
-The app now requests permissions for accessing health and calendar data:
-- **Screen Time Tracking**: Monitor your device usage patterns
-- **Sleep Tracking**: Log and track your sleep data
-- Permissions are requested on app launch with user-friendly prompts
-
-### 3. **Enhanced Theme Customization**
-Access **Settings** to personalize your experience:
-
-#### Theme Styles (3 options)
-- **Light**: Clean, bright interface for daytime use
-- **Dark**: Easy on the eyes for evening study sessions
-- **Warm**: Warm tones to reduce eye strain
-
-#### Accent Colors (8 options)
-- Blue, Green, Purple, Orange, Pink, Red, Indigo, Cyan
-- Choose colors that match your mood or study environment
-
-#### Text Sizes (3 options)
-- **Small**: Compact, shows more content
-- **Medium** (Default): Balanced readability
-- **Large**: Comfortable for extended reading
-
-#### Animations Toggle
-- Enable/disable smooth animations
-- Toggle for better performance on older devices
-
-### 4. **Streamlined Study Experience**
-
-#### Enhanced Study Timer (`🎯 Focus Mode`)
-- **Real-time timer** with hours:minutes:seconds display
-- **Active animations** that pulse while studying
-- **Subject tracking** - log what you're studying
-- **Quick stats** showing:
-  - Sessions completed today
-  - Total study time
-  - Average session duration
-- **Session history** with detailed breakdowns
-
-### 5. **Advanced Wellness Tracking** (`❤️ Wellness Tracker`)
-
-#### Sleep Tracking
-- **Bedtime & wake time logging**
-- **Sleep duration tracking** (in hours)
-- Automatic sleep calculation
-- Track sleep patterns over time
-
-#### Screen Time Monitoring
-- Log daily screen time (in hours)
-- Monitor trends and set goals
-- Compare with sleep duration
-
-#### Mood Tracking
-- 5-level mood selector (😴😑😐🙂😄)
-- Correlate mood with sleep and screen time
-- Identify productivity patterns
-
-#### Analytics Dashboard
-- **Average sleep hours** - Monitor your rest
-- **Average screen time** - Track device usage
-- **Total logs** - See your tracking history
-- Recent activity with date and mood indicators
-
-### 6. **Improved Dashboard** (`📊 Dashboard`)
-Real-time stats showing:
-- Today's study time
-- Pending tasks
-- Last night's sleep
-- Current screen time
-- Quick tips for better focus
-
-### 7. **Better Task Management** (`✓ Tasks`)
-- **Color-coded tasks** with theme integration
-- **Subject tagging** for organization
-- **Separate sections** for pending and completed tasks
-- **Visual progress** - See completed work at a glance
-- **Streamlined UI** for quick task management
-
-### 8. **Enhanced Schedule** (`📅 Schedule`)
-- **Weekly planning** by day
-- **Color-coded activities** 
-- **Time tracking** for each activity
-- **Visual organization** of your week
-
-## 🎮 How to Use
-
-### Getting Started
-1. **First Launch**: App requests calendar/health permissions - tap "Allow" to enable full features
-2. **Customize Your Look**: Go to Settings → Choose theme, colors, and text size
-3. **Start Studying**: Create a study session in Focus Mode
-
-### Daily Workflow
-
-#### Morning
-1. Check Dashboard for today's overview
-2. Review your schedule
-3. Start your first study session
-4. Add tasks as needed
-
-#### Throughout the Day
-1. Log study sessions in Focus Mode
-2. Check off completed tasks
-3. Track screen time in Wellness
-
-#### Evening
-1. Log sleep and screen time in Wellness Tracker
-2. Rate your mood
-3. Review tomorrow's schedule
-4. Plan tomorrow's tasks
-
-## 🎨 Customization Tips
-
-### For Better Focus
-- Use **Dark theme** in the evening to reduce eye strain
-- Set text size to **Large** for comfortable reading
-- Enable **animations** for visual feedback
-
-### For Eye Strain Relief
-- Choose **Warm theme** to reduce blue light
-- Pick **calming colors** like Green or Blue for accent
-- Disable animations if needed
-
-### For Performance
-- Use **Light theme** on older devices
-- Set text size to **Small** to save memory
-- Disable animations on low-end devices
-
-## 📊 Understanding Your Data
-
-### Study Statistics
-- **Sessions Today**: How many study blocks you've completed
-- **Total Time**: Sum of all study durations today
-- **Avg Session**: Average length of your study sessions
-
-### Wellness Metrics
-- **Avg Sleep**: Average hours of sleep from your logs
-- **Avg Screen**: Average daily screen time
-- **Total Logs**: Number of days you've logged data
-
-### Task Tracking
-- **Pending**: Tasks not yet completed (sorted by priority)
-- **Completed**: Tasks you've finished (visible for reference)
-
-## 🔔 Permissions Explained
-
-### Calendar Permission
-- Used for scheduling and health data integration
-- Allows the app to store study sessions and wellness logs
-- Can be managed in device settings anytime
-
-### Health Data Permission
-- For future integration with Apple HealthKit (iOS) and Google Fit (Android)
-- Enables sleep and screen time tracking features
-- Your data stays on your device
-
-## ⚙️ Settings Options
-
-| Setting | Options | Impact |
-|---------|---------|--------|
-| Theme Style | Light, Dark, Warm | Changes colors and background |
-| Accent Color | 8 colors | Changes highlights and buttons |
-| Text Size | Small, Medium, Large | Changes font sizes across app |
-| Animations | On/Off | Enables/disables smooth transitions |
-
-## 💡 Pro Tips
-
-1. **Use subjects in study sessions** - Makes it easier to track learning across different subjects
-2. **Log wellness daily** - Consistent logging reveals patterns
-3. **Correlate sleep with productivity** - Find your optimal sleep amount
-4. **Set screen time goals** - Use logging to create awareness
-5. **Color-code your mood** - Track emotional trends
-6. **Review weekly** - Check Dashboard to celebrate progress
-
-## 🐛 Troubleshooting
-
-### App not saving data?
-- Check storage permissions in device settings
-- Restart the app
-- Ensure you have storage space available
-
-### Permissions not appearing?
-- You may have already granted/denied them
-- Check device Settings → Apps → Focus → Permissions
-- Reinstall app to reset permissions
-
-### Theme not applying?
-- Close and reopen the app
-- Try selecting theme again in Settings
-- Check device theme settings (Light/Dark mode)
-
-### Text size not changing?
-- Restart the app after changing size
-- Check your device accessibility settings
-
-## 📱 Compatibility
-
-- **iOS**: 13.0 and later
-- **Android**: 8.0 and later
-- **Tablets**: Fully supported with responsive design
-- **Dark Mode**: Full support for system-wide dark mode
-
-## 🚀 Future Features
-
-Coming soon:
-- Apple HealthKit integration (real screen time data)
-- Google Fit integration (Android screen time data)
-- Study sessions breakdown by subject
-- Habit tracking and streak counters
-- Cloud sync across devices
-- Export data as PDF reports
-
-## ❓ Need Help?
-
-If you encounter any issues:
-1. Check this documentation
-2. Review the troubleshooting section
-3. Try restarting the app
-4. Clear app cache in device settings
-5. Reinstall the app if problems persist
+*Last updated: 2026-04-28*
 
 ---
 
-**Enjoy focusing! Remember: Consistent study beats intense cramming. 📚✨**
+## Screens (Drawer Navigation)
+
+| Screen | Route | Purpose |
+|--------|-------|---------|
+| Dashboard | `/` | Daily overview, streak, XP, achievements |
+| Study | `/study` | Focus timer and session history |
+| Goals | `/goals` | SMART goal tracker |
+| Tasks | `/tasks` | Task management |
+| Schedule | `/schedule` | Weekly planner |
+| Wellness | `/wellness` | Sleep and mood logging |
+| Screen Time | `/screentime` | Manual screen time tracking |
+| Settings | `/settings` | Appearance and notification preferences |
+
+---
+
+## Onboarding
+
+6-step animated carousel shown on first launch. Collects a user profile saved to `AsyncStorage`.
+
+- **Step 0** — Name input
+- **Step 1** — Grade (6th–College) and optional school name
+- **Step 2** — Subject selection (Math, Science, English, History, CS/Coding, Art, Music, Languages, PE/Sports, Other)
+- **Step 3** — Focus areas (Academic Excellence, Competitions & Awards, Health & Wellness, Time Management, Personal Growth, Extracurriculars)
+- **Step 4** — Permissions: Calendar, Health App, Screen Time, Notifications
+- **Step 5** — Daily study goal (1h / 1.5h / 2h / 3h / 4h / 5+h) and profile summary
+
+Onboarding can be reset via `RESET_APP` device event (used by Settings).
+
+---
+
+## Dashboard
+
+- Time-of-day greeting (morning / afternoon / evening)
+- Today's date display
+- **Streak + XP banner** — shows current streak, level, XP, and progress bar to next level. Tapping expands the achievements shelf.
+- **Achievements shelf** — horizontal scrollable row showing all 7 achievements (earned vs locked)
+- **Stat cards** — Study Time, Tasks Pending, Sleep Last Night, Screen Time. Each card is tappable and navigates to the relevant screen.
+- Quick tips section
+
+---
+
+## Study Timer
+
+- **Free timer** — start, pause, resume, stop. Displays `HH:MM:SS`.
+- **Pomodoro mode** — 25-min work / 5-min break / 15-min long break cycles
+- Subject field for tagging sessions
+- Animated pulse while running (respects animation toggle)
+- Haptic feedback on start/stop (via `expo-haptics`)
+- Sessions saved to `AsyncStorage` with date, duration, subject
+- **Session history** grouped by date (Today / Yesterday / date string)
+- After saving a session: XP awarded, streak updated, achievements checked
+
+---
+
+## Gamification
+
+Powered by `services/streaks.ts`.
+
+### Streaks
+- Increments when a session is logged on a new calendar day
+- Resets to 1 if a day is skipped
+- Tracks current streak and all-time longest streak
+
+### XP & Levels
+- 1 XP per minute of study time per session
+- Level = `floor(totalXP / 100)` — so every 100 XP is a new level
+- XP progress bar on dashboard shows distance to next level
+
+### Achievements (7 total)
+
+| ID | Icon | Label | Condition |
+|----|------|-------|-----------|
+| `first_session` | 🎓 | First Session | Complete 1 session |
+| `streak_3` | 🔥 | 3-Day Streak | 3 consecutive study days |
+| `streak_7` | ⚡ | 7-Day Streak | 7 consecutive study days |
+| `marathon` | 📚 | Marathon | 3+ hours studied in one day |
+| `century` | 🏆 | Century | 100 total sessions |
+| `well_rounded` | 🌈 | Well-Rounded | 5+ distinct subjects studied |
+| `perfect_day` | ✅ | Perfect Day | Hit daily study goal |
+
+---
+
+## SMART Goals
+
+### Time Horizons (tabs)
+- Daily ☀️ — habits and tasks for today
+- Weekly 📅 — goals to finish this week
+- Monthly 🗓️ — monthly milestones
+- Long-term 🏆 — competitions, projects, big ambitions
+
+### Goal Categories
+Academic, Competition, Wellness, Project, Extracurricular, Personal
+
+### Goal Structure (SMART framework)
+Each goal captures: title, category, time horizon, and five SMART fields:
+- **S**pecific — what exactly to achieve
+- **M**easurable — how to track progress
+- **A**chievable — is it realistic?
+- **R**elevant — why it matters
+- **T**ime-bound — deadline or timeframe
+
+Creation uses a guided step-by-step modal with example answers for each field.
+
+### Goal Features
+- Progress tracking: 0% / 25% / 50% / 75% / 100% tap buttons
+- Toggle complete / incomplete
+- Delete with confirmation
+- Goal-task linking: tasks can be linked to a goal; linked tasks are shown on the goal detail view
+- **Built-in daily study hours goal card** on the Daily tab — shows today's progress vs the study goal set in onboarding
+- Stats header shows X/Y goals achieved per time horizon
+
+---
+
+## Tasks
+
+- Create, complete, and delete tasks
+- Tasks can be linked to a goal (`goalId`)
+- Color-coded with theme accent
+- Separate sections for pending and completed
+- Task due dates trigger scheduled notifications
+
+---
+
+## Schedule
+
+- Weekly view organized by day
+- Color-coded activities with time tracking
+
+---
+
+## Wellness
+
+- **Sleep logging** — bedtime, wake time, auto-calculated duration
+- **Mood tracking** — 5 levels (😴 😑 😐 🙂 😄)
+- Analytics: average sleep hours, average screen time, total logs
+- Recent activity list with date and mood indicators
+
+---
+
+## Screen Time
+
+- Manual daily screen time logging (in hours)
+- Displayed on dashboard stat card
+
+---
+
+## Notifications
+
+Powered by `services/notifications.ts` using `expo-notifications`.
+
+| Type | Trigger | Message |
+|------|---------|---------|
+| Study reminder | Daily at user-set time | "Time to study!" |
+| Bedtime reminder | Daily at user-set time | "Wind down and log your sleep" |
+| Streak-at-risk | Daily at 8:00 PM | "Don't break your streak!" |
+| Task due alert | 8:00 AM on task due date | Task title |
+
+Android uses a notification channel named "Focus Reminders" with MAX importance and vibration.
+
+---
+
+## Theme System
+
+Configured in Settings, persisted via `ThemeContext`.
+
+| Setting | Options |
+|---------|---------|
+| Theme style | Light, Dark, Warm |
+| Accent color | Blue, Green, Purple, Orange, Pink, Red, Indigo, Cyan (8 options) |
+| Text size | Small, Medium, Large |
+| Animations | On / Off |
+
+---
+
+## Platform Support
+
+- iOS 13.0+ and Android 8.0+
+- Responsive design (scales to screen size)
+- Platform-specific notification channel (Android)
+- Permission flows: Calendar, Health (opens system settings), Screen Time (opens system settings), Notifications
+
+---
+
+## Data Storage
+
+All data is stored locally via `AsyncStorage`. No cloud sync.
+
+| Key | Contents |
+|-----|----------|
+| `focusUserProfile` | Name, grade, school, subjects, focus areas, study goal |
+| `focusOnboardingComplete` | Boolean flag |
+| `focusSessions` | Array of study sessions |
+| `focusTasks` | Array of tasks |
+| `focusWellness` | Array of wellness logs |
+| `focusGoals` | Array of SMART goals |
+| `focusStreak` | Current/longest streak and last date |
+| `focusXP` | Total XP integer |
+| `focusAchievements` | Array of earned achievement IDs |
+| `focusStudyReminderId` | Scheduled notification ID |
+| `focusBedtimeReminderId` | Scheduled notification ID |
+| `focusStreakReminderId` | Scheduled notification ID |
+| `focusTaskNotifMap` | Map of taskId → notification ID |
