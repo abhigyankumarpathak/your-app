@@ -39,6 +39,10 @@ function DrawerLayout() {
         options={{ title: 'Study', drawerIcon: ({ color }) => <Ionicons name="book" size={22} color={color} /> }}
       />
       <Drawer.Screen
+        name="game"
+        options={{ title: 'Quests & Levels', drawerIcon: ({ color }) => <Ionicons name="game-controller" size={22} color={color} /> }}
+      />
+      <Drawer.Screen
         name="goals"
         options={{ title: 'Goals', drawerIcon: ({ color }) => <Ionicons name="trophy" size={22} color={color} /> }}
       />

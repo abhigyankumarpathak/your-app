@@ -43,7 +43,6 @@ export default function Dashboard() {
   const [achievements, setAchievements] = useState<string[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
   const [questDisplays, setQuestDisplays] = useState<QuestDisplay[]>([]);
-  const [showQuests, setShowQuests] = useState(true);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   useFocusEffect(
@@ -158,73 +157,34 @@ export default function Dashboard() {
           </View>
         )}
 
-        {/* ── Daily Quests ───────────────────────────────────────────── */}
+        {/* ── Quests teaser ──────────────────────────────────────────── */}
         {questDisplays.length > 0 && (() => {
           const doneCount = questDisplays.filter(q => q.completed).length;
+          const allDone = doneCount === questDisplays.length;
           return (
-            <View style={{ marginTop: 12 }}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setShowQuests(v => !v)}
-                style={[styles.questHeader, { backgroundColor: presetValues.cardBg, borderColor: accentColor }]}
-              >
-                <View style={styles.questHeaderLeft}>
-                  <Text style={[styles.questHeaderIcon, { fontSize: fontSizes.heading }]}>⚔️</Text>
-                  <View>
-                    <Text style={[styles.questHeaderTitle, { color: presetValues.text, fontSize: fontSizes.base + 1 }]}>
-                      Daily Quests
-                    </Text>
-                    <Text style={[styles.questHeaderSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                      {doneCount}/{questDisplays.length} completed today
-                    </Text>
-                  </View>
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={() => router.push('/game')}
+              style={[styles.questTeaser, { backgroundColor: allDone ? accentColor : presetValues.cardBg, borderColor: accentColor }]}
+            >
+              <View style={styles.questTeaserLeft}>
+                <Text style={{ fontSize: 28 }}>⚔️</Text>
+                <View>
+                  <Text style={[styles.questTeaserTitle, { color: allDone ? '#fff' : presetValues.text, fontSize: fontSizes.base + 1 }]}>
+                    Daily Quests
+                  </Text>
+                  <Text style={[styles.questTeaserSub, { color: allDone ? 'rgba(255,255,255,0.8)' : presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                    {allDone ? '🎉 All done — great work!' : `${doneCount}/${questDisplays.length} completed`}
+                  </Text>
                 </View>
-                <View style={styles.questHeaderRight}>
-                  <View style={[styles.questProgressPill, { backgroundColor: doneCount === questDisplays.length ? accentColor : presetValues.bgSecondary }]}>
-                    <Text style={[styles.questProgressPillText, { color: doneCount === questDisplays.length ? '#fff' : accentColor, fontSize: fontSizes.base - 2 }]}>
-                      {doneCount === questDisplays.length ? '🎉 All Done!' : `${doneCount}/${questDisplays.length}`}
-                    </Text>
-                  </View>
-                  <Text style={[{ color: presetValues.textSecondary, fontSize: 14, marginLeft: 6 }]}>{showQuests ? '▲' : '▼'}</Text>
-                </View>
-              </TouchableOpacity>
-
-              {showQuests && (
-                <View style={[styles.questList, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
-                  {questDisplays.map((quest, idx) => {
-                    const pct = quest.progress.total > 0 ? quest.progress.current / quest.progress.total : 0;
-                    return (
-                      <View key={quest.id} style={[styles.questRow, idx < questDisplays.length - 1 && { borderBottomWidth: 1, borderBottomColor: presetValues.borderColor }]}>
-                        <View style={[styles.questIconWrap, { backgroundColor: quest.completed ? accentColor : accentColor + '22' }]}>
-                          <Text style={{ fontSize: 18 }}>{quest.icon}</Text>
-                        </View>
-                        <View style={styles.questInfo}>
-                          <View style={styles.questTitleRow}>
-                            <Text style={[styles.questTitle, { color: presetValues.text, fontSize: fontSizes.base, textDecorationLine: quest.completed ? 'line-through' : 'none', opacity: quest.completed ? 0.6 : 1 }]}>
-                              {quest.title}
-                            </Text>
-                            <View style={[styles.xpBadge, { backgroundColor: accentColor + '22' }]}>
-                              <Text style={[styles.xpBadgeText, { color: accentColor, fontSize: fontSizes.base - 3 }]}>
-                                +{quest.bonusXP} XP
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={[styles.questDesc, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                            {quest.description}
-                          </Text>
-                          <View style={[styles.questBar, { backgroundColor: presetValues.bgSecondary }]}>
-                            <View style={[styles.questBarFill, { width: `${Math.min(pct * 100, 100)}%` as any, backgroundColor: quest.completed ? accentColor : accentColor + '99' }]} />
-                          </View>
-                        </View>
-                        {quest.completed && (
-                          <Text style={[styles.questCheck, { color: accentColor, fontSize: fontSizes.heading }]}>✓</Text>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+              </View>
+              <View style={styles.questTeaserRight}>
+                {questDisplays.map(q => (
+                  <Text key={q.id} style={{ fontSize: 18, opacity: q.completed ? 1 : 0.3 }}>{q.icon}</Text>
+                ))}
+                <Text style={[{ color: allDone ? '#fff' : presetValues.textSecondary, marginLeft: 4 }]}>→</Text>
+              </View>
+            </TouchableOpacity>
           );
         })()}
 
@@ -293,28 +253,12 @@ const styles = StyleSheet.create({
   tipTitle: { marginBottom: 8 },
   tipText: { fontWeight: '500' },
 
-  questHeader: {
-    borderRadius: 14, padding: 14, borderWidth: 1.5,
+  questTeaser: {
+    borderRadius: 14, padding: 14, borderWidth: 1.5, marginTop: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  questHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  questHeaderIcon: {},
-  questHeaderTitle: { fontWeight: '700' },
-  questHeaderSub: { fontWeight: '500', marginTop: 1 },
-  questHeaderRight: { flexDirection: 'row', alignItems: 'center' },
-  questProgressPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  questProgressPillText: { fontWeight: '700' },
-
-  questList: { borderRadius: 14, borderWidth: 1, marginTop: 6, overflow: 'hidden' },
-  questRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  questIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  questInfo: { flex: 1, gap: 4 },
-  questTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  questTitle: { fontWeight: '600', flex: 1 },
-  questDesc: { fontWeight: '500' },
-  questBar: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 2 },
-  questBarFill: { height: '100%', borderRadius: 2 },
-  questCheck: { fontWeight: '900' },
-  xpBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
-  xpBadgeText: { fontWeight: '700' },
+  questTeaserLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  questTeaserTitle: { fontWeight: '700' },
+  questTeaserSub: { fontWeight: '500', marginTop: 1 },
+  questTeaserRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

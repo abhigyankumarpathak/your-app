@@ -15,6 +15,7 @@
 | Schedule | `/schedule` | Weekly planner |
 | Wellness | `/wellness` | Sleep and mood logging |
 | Screen Time | `/screentime` | Manual screen time tracking |
+| Quests & Levels | `/game` | Duolingo-style level path, daily quests, achievement grid |
 | Settings | `/settings` | Appearance and notification preferences |
 
 ---
