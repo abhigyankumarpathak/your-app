@@ -14,7 +14,8 @@ import {
     View,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { updateStudyStats } from '../services/streaks';
+import { updateQuestProgress } from '../services/quests';
+import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatDuration(s: number) {
@@ -181,11 +182,20 @@ export default function Study() {
     const updated = [newSession, ...sessions];
     await persist(updated);
 
-    // XP + streak + achievements
     const profile = await AsyncStorage.getItem('focusUserProfile');
     const goalHours = profile ? (parseFloat(JSON.parse(profile).studyGoalHours) || 0) : 0;
+    const prevXP = await loadXP();
     const { xpGained, newAchievements } = await updateStudyStats(updated, goalHours);
-    showXpToast(`+${xpGained} XP${newAchievements.length > 0 ? ` · 🏅 ${newAchievements.length} achievement${newAchievements.length > 1 ? 's' : ''}!` : ''}`);
+    const { newlyCompleted, bonusXP } = await updateQuestProgress(updated, goalHours);
+    const finalXP = prevXP + xpGained + bonusXP;
+    const leveledUp = getLevel(finalXP) > getLevel(prevXP);
+
+    const totalXP = xpGained + bonusXP;
+    let msg = `+${totalXP} XP`;
+    if (newAchievements.length > 0) msg += ` · 🏅 ${newAchievements.length} badge${newAchievements.length > 1 ? 's' : ''}!`;
+    if (newlyCompleted.length > 0) msg += ` · ⚔️ ${newlyCompleted.length} quest${newlyCompleted.length > 1 ? 's' : ''}!`;
+    if (leveledUp) msg = `🎉 Level Up! · ${msg}`;
+    showXpToast(msg);
   };
 
   const handleStart = () => {

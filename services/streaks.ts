@@ -25,6 +25,14 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
 
 export const getLevel = (xp: number) => Math.floor(xp / 100);
 
+export const LEVEL_TITLES = [
+  'Rookie', 'Learner', 'Scholar', 'Achiever', 'Expert',
+  'Master', 'Champion', 'Genius', 'Legend', 'Prodigy',
+];
+
+export const getLevelTitle = (xp: number): string =>
+  LEVEL_TITLES[Math.min(getLevel(xp), LEVEL_TITLES.length - 1)];
+
 export const xpForNextLevel = (xp: number) => {
   const level = getLevel(xp);
   return (level + 1) * 100 - xp;

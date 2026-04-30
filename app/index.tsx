@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { ALL_ACHIEVEMENTS, getLevel, loadAchievements, loadStreakData, loadXP } from '../services/streaks';
+import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
+import { ALL_ACHIEVEMENTS, getLevel, getLevelTitle, loadAchievements, loadStreakData, loadXP } from '../services/streaks';
 
 function StatCard({ label, value, unit, icon, color, route }: any) {
   const { fontSizes, presetValues } = useTheme();
@@ -41,6 +42,8 @@ export default function Dashboard() {
   const [xp, setXp] = useState(0);
   const [achievements, setAchievements] = useState<string[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [questDisplays, setQuestDisplays] = useState<QuestDisplay[]>([]);
+  const [showQuests, setShowQuests] = useState(true);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   useFocusEffect(
@@ -59,9 +62,11 @@ export default function Dashboard() {
 
       let studyHours = 0, taskCount = 0, sleepHours = 0, screenTime = 0;
       const todayDate = new Date().toLocaleDateString();
+      let allSessions: any[] = [];
 
       if (sessions) {
-        const todaySessions = JSON.parse(sessions).filter((s: any) => s.date === todayDate);
+        allSessions = JSON.parse(sessions);
+        const todaySessions = allSessions.filter((s: any) => s.date === todayDate);
         studyHours = Math.round((todaySessions.reduce((sum: number, s: any) => sum + s.duration, 0) / 3600) * 10) / 10;
       }
       if (tasks) taskCount = JSON.parse(tasks).filter((t: any) => !t.done).length;
@@ -74,10 +79,17 @@ export default function Dashboard() {
       }
       setStats({ studyHours, tasks: taskCount, sleepHours, screenTime });
 
-      const [streakData, xpVal, earned] = await Promise.all([loadStreakData(), loadXP(), loadAchievements()]);
+      const profile = await AsyncStorage.getItem('focusUserProfile');
+      const goalHours = profile ? (parseFloat(JSON.parse(profile).studyGoalHours) || 0) : 0;
+
+      const [streakData, xpVal, earned, quests] = await Promise.all([
+        loadStreakData(), loadXP(), loadAchievements(),
+        getTodayQuestDisplays(allSessions, goalHours),
+      ]);
       setStreak(streakData.current);
       setXp(xpVal);
       setAchievements(earned);
+      setQuestDisplays(quests);
     } catch (e) {
       console.log('Error loading stats:', e);
     }
@@ -109,7 +121,7 @@ export default function Dashboard() {
                 {streak > 0 ? `${streak}-day streak` : 'Start your streak today!'}
               </Text>
               <Text style={[styles.streakSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                Level {level} · {xp} XP
+                Level {level}: {getLevelTitle(xp)} · {xp} XP
               </Text>
             </View>
           </View>
@@ -145,6 +157,76 @@ export default function Dashboard() {
             </ScrollView>
           </View>
         )}
+
+        {/* ── Daily Quests ───────────────────────────────────────────── */}
+        {questDisplays.length > 0 && (() => {
+          const doneCount = questDisplays.filter(q => q.completed).length;
+          return (
+            <View style={{ marginTop: 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setShowQuests(v => !v)}
+                style={[styles.questHeader, { backgroundColor: presetValues.cardBg, borderColor: accentColor }]}
+              >
+                <View style={styles.questHeaderLeft}>
+                  <Text style={[styles.questHeaderIcon, { fontSize: fontSizes.heading }]}>⚔️</Text>
+                  <View>
+                    <Text style={[styles.questHeaderTitle, { color: presetValues.text, fontSize: fontSizes.base + 1 }]}>
+                      Daily Quests
+                    </Text>
+                    <Text style={[styles.questHeaderSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                      {doneCount}/{questDisplays.length} completed today
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.questHeaderRight}>
+                  <View style={[styles.questProgressPill, { backgroundColor: doneCount === questDisplays.length ? accentColor : presetValues.bgSecondary }]}>
+                    <Text style={[styles.questProgressPillText, { color: doneCount === questDisplays.length ? '#fff' : accentColor, fontSize: fontSizes.base - 2 }]}>
+                      {doneCount === questDisplays.length ? '🎉 All Done!' : `${doneCount}/${questDisplays.length}`}
+                    </Text>
+                  </View>
+                  <Text style={[{ color: presetValues.textSecondary, fontSize: 14, marginLeft: 6 }]}>{showQuests ? '▲' : '▼'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {showQuests && (
+                <View style={[styles.questList, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
+                  {questDisplays.map((quest, idx) => {
+                    const pct = quest.progress.total > 0 ? quest.progress.current / quest.progress.total : 0;
+                    return (
+                      <View key={quest.id} style={[styles.questRow, idx < questDisplays.length - 1 && { borderBottomWidth: 1, borderBottomColor: presetValues.borderColor }]}>
+                        <View style={[styles.questIconWrap, { backgroundColor: quest.completed ? accentColor : accentColor + '22' }]}>
+                          <Text style={{ fontSize: 18 }}>{quest.icon}</Text>
+                        </View>
+                        <View style={styles.questInfo}>
+                          <View style={styles.questTitleRow}>
+                            <Text style={[styles.questTitle, { color: presetValues.text, fontSize: fontSizes.base, textDecorationLine: quest.completed ? 'line-through' : 'none', opacity: quest.completed ? 0.6 : 1 }]}>
+                              {quest.title}
+                            </Text>
+                            <View style={[styles.xpBadge, { backgroundColor: accentColor + '22' }]}>
+                              <Text style={[styles.xpBadgeText, { color: accentColor, fontSize: fontSizes.base - 3 }]}>
+                                +{quest.bonusXP} XP
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={[styles.questDesc, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                            {quest.description}
+                          </Text>
+                          <View style={[styles.questBar, { backgroundColor: presetValues.bgSecondary }]}>
+                            <View style={[styles.questBarFill, { width: `${Math.min(pct * 100, 100)}%` as any, backgroundColor: quest.completed ? accentColor : accentColor + '99' }]} />
+                          </View>
+                        </View>
+                        {quest.completed && (
+                          <Text style={[styles.questCheck, { color: accentColor, fontSize: fontSizes.heading }]}>✓</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title, marginBottom: 16, marginTop: 16 }]}>
           📊 Today's Overview
@@ -210,4 +292,29 @@ const styles = StyleSheet.create({
   tipBox: { borderRadius: 12, padding: 14, marginTop: 20, borderWidth: 1 },
   tipTitle: { marginBottom: 8 },
   tipText: { fontWeight: '500' },
+
+  questHeader: {
+    borderRadius: 14, padding: 14, borderWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  questHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  questHeaderIcon: {},
+  questHeaderTitle: { fontWeight: '700' },
+  questHeaderSub: { fontWeight: '500', marginTop: 1 },
+  questHeaderRight: { flexDirection: 'row', alignItems: 'center' },
+  questProgressPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  questProgressPillText: { fontWeight: '700' },
+
+  questList: { borderRadius: 14, borderWidth: 1, marginTop: 6, overflow: 'hidden' },
+  questRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  questIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  questInfo: { flex: 1, gap: 4 },
+  questTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  questTitle: { fontWeight: '600', flex: 1 },
+  questDesc: { fontWeight: '500' },
+  questBar: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 2 },
+  questBarFill: { height: '100%', borderRadius: 2 },
+  questCheck: { fontWeight: '900' },
+  xpBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  xpBadgeText: { fontWeight: '700' },
 });

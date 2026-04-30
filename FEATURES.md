@@ -1,6 +1,6 @@
 # Focus App — Feature Reference
 
-*Last updated: 2026-04-28*
+*Last updated: 2026-04-29*
 
 ---
 
@@ -60,7 +60,7 @@ Onboarding can be reset via `RESET_APP` device event (used by Settings).
 
 ## Gamification
 
-Powered by `services/streaks.ts`.
+Powered by `services/streaks.ts` and `services/quests.ts`.
 
 ### Streaks
 - Increments when a session is logged on a new calendar day
@@ -69,8 +69,50 @@ Powered by `services/streaks.ts`.
 
 ### XP & Levels
 - 1 XP per minute of study time per session
+- Bonus XP awarded on quest completion (see Daily Quests)
 - Level = `floor(totalXP / 100)` — so every 100 XP is a new level
 - XP progress bar on dashboard shows distance to next level
+- Level-up toast shown when a session or quest pushes you to a new level
+
+### Level Titles
+
+| Level | Title |
+|-------|-------|
+| 0 | Rookie |
+| 1 | Learner |
+| 2 | Scholar |
+| 3 | Achiever |
+| 4 | Expert |
+| 5 | Master |
+| 6 | Champion |
+| 7 | Genius |
+| 8 | Legend |
+| 9+ | Prodigy |
+
+### Daily Quests
+
+Powered by `services/quests.ts`. 3 quests are selected each day from a pool of 10 using a date-seeded deterministic shuffle (same quests all day, fresh set each morning).
+
+Completing a quest awards bonus XP instantly. Each quest can only be completed once per day.
+
+| ID | Icon | Title | Description | Bonus XP |
+|----|------|-------|-------------|----------|
+| `study_starter` | 🎯 | Study Starter | Log 1 session today | +10 |
+| `double_session` | 🔁 | Double Down | Log 2 sessions today | +20 |
+| `triple_session` | 🎰 | Triple Threat | Log 3 sessions today | +35 |
+| `subject_hopper` | 🌀 | Subject Hopper | Study 2 different subjects today | +25 |
+| `multi_scholar` | 🌈 | Multi-Scholar | Study 3 different subjects today | +40 |
+| `focus_block` | ⚡ | Focus Block | Study 30+ min in one session | +30 |
+| `deep_focus` | 🧠 | Deep Focus | Study 1+ hour in one session | +50 |
+| `hour_hero` | 🦸 | Hour Hero | Study 1+ hour total today | +40 |
+| `note_taker` | 📝 | Note Taker | Add notes to a session | +15 |
+| `goal_crusher` | 🏅 | Goal Crusher | Hit your daily study goal | +50 |
+
+Quest state stored in `focusDailyQuests` key (`{ date, questIds, completedIds }`).
+
+Dashboard shows a collapsible **Daily Quests** card (between achievements shelf and stat cards) with per-quest progress bars, XP badges, and strikethrough on completed quests.
+
+Session save toast now shows total XP (session + quest bonus), badge count, quest count, and level-up message when applicable.
 
 ### Achievements (7 total)
 
@@ -202,6 +244,7 @@ All data is stored locally via `AsyncStorage`. No cloud sync.
 | `focusStreak` | Current/longest streak and last date |
 | `focusXP` | Total XP integer |
 | `focusAchievements` | Array of earned achievement IDs |
+| `focusDailyQuests` | `{ date, questIds[], completedIds[] }` — today's quest selection and completion |
 | `focusStudyReminderId` | Scheduled notification ID |
 | `focusBedtimeReminderId` | Scheduled notification ID |
 | `focusStreakReminderId` | Scheduled notification ID |
