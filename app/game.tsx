@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -10,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
@@ -79,83 +80,233 @@ function XPRing({ pct, size, color, level }: { pct: number; size: number; color:
   );
 }
 
-// ── Level path node ──────────────────────────────────────────────────────────
-function LevelNode({ nodeLevel, currentLevel, xp, accentColor, presetValues, fontSizes, isLast }: any) {
-  const isCurrent = nodeLevel === currentLevel;
-  const isPast    = nodeLevel < currentLevel;
-  const isFuture  = nodeLevel > currentLevel;
-  const title     = LEVEL_TITLES[Math.min(nodeLevel, LEVEL_TITLES.length - 1)];
-  const xpNeeded  = nodeLevel * 100;
-  const pulse     = useRef(new Animated.Value(1)).current;
+// ── Level path canvas (Duolingo-style) ──────────────────────────────────────
+const SEGMENT_H = 150;
+const NODE_D    = 60;
+const NODE_D_C  = 72;
+const PATH_W    = 13;
+
+const DECO_PATTERNS: { t: 'pill' | 'diamond' | 'sparkle'; rx: number; ry: number }[][] = [
+  [{ t: 'sparkle', rx: 0.07, ry: 0.30 }, { t: 'pill',    rx: 0.88, ry: 0.18 }, { t: 'diamond', rx: 0.91, ry: 0.68 }],
+  [{ t: 'diamond', rx: 0.05, ry: 0.55 }, { t: 'sparkle', rx: 0.87, ry: 0.40 }, { t: 'pill',    rx: 0.08, ry: 0.78 }],
+  [{ t: 'pill',    rx: 0.07, ry: 0.22 }, { t: 'diamond', rx: 0.92, ry: 0.70 }, { t: 'sparkle', rx: 0.86, ry: 0.14 }],
+  [{ t: 'sparkle', rx: 0.09, ry: 0.62 }, { t: 'pill',    rx: 0.91, ry: 0.28 }, { t: 'diamond', rx: 0.06, ry: 0.85 }],
+  [{ t: 'diamond', rx: 0.10, ry: 0.36 }, { t: 'sparkle', rx: 0.89, ry: 0.56 }, { t: 'pill',    rx: 0.07, ry: 0.76 }],
+];
+
+const PATH_ICONS = ['🥚', '🐣', '📖', '⭐', '🚀', '🔥', '⚡', '💎', '🏆', '👑', '🌟'];
+
+// ── Geometric decoration shapes ──────────────────────────────────────────────
+function GeoDeco({ type, x, y, size, color }: { type: string; x: number; y: number; size: number; color: string }) {
+  if (type === 'pill') {
+    return (
+      <View style={{
+        position: 'absolute',
+        left: x - size * 0.75, top: y - size * 0.35,
+        width: size * 1.5, height: size * 0.7,
+        backgroundColor: color + '40',
+        borderRadius: 6,
+        borderWidth: 1.5, borderColor: color + '75',
+      }} />
+    );
+  }
+  if (type === 'diamond') {
+    return (
+      <View style={{
+        position: 'absolute', left: x - size / 2, top: y - size / 2,
+        width: size, height: size,
+        backgroundColor: color + '38', borderWidth: 2, borderColor: color + '70',
+        transform: [{ rotate: '45deg' }],
+      }} />
+    );
+  }
+  // sparkle — 4 radiating bars + center dot
+  const bar = 2.5;
+  return (
+    <View style={{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size, height: size }}>
+      {[0, 45, 90, 135].map(deg => (
+        <View key={deg} style={{
+          position: 'absolute',
+          left: size / 2 - size / 2, top: size / 2 - bar / 2,
+          width: size, height: bar, borderRadius: bar / 2,
+          backgroundColor: color + 'BB',
+          transform: [{ rotate: `${deg}deg` }],
+        }} />
+      ))}
+      <View style={{
+        position: 'absolute', left: size / 2 - 3, top: size / 2 - 3,
+        width: 6, height: 6, borderRadius: 3, backgroundColor: color,
+      }} />
+    </View>
+  );
+}
+
+// ── Main path canvas ─────────────────────────────────────────────────────────
+function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, fontSizes }: any) {
+  const { width: screenW } = useWindowDimensions();
+  const W    = screenW - 32;
+  const LX   = W * 0.22;
+  const RX   = W * 0.78;
+  const segW = RX - LX;
+
+  const totalH  = pathLevels.length * SEGMENT_H + 24;
+  const cornerR = Math.min(segW * 0.45, 50);
+
+  // Precompute geometric decorations
+  type Deco = { type: string; x: number; y: number; size: number; past: boolean };
+  const decos = useMemo<Deco[]>(() => {
+    const SIZES = [13, 11, 15];
+    return pathLevels.slice(0, -1).flatMap((nodeLevel: number, i: number) => {
+      const isPast = nodeLevel < currentLevel;
+      return DECO_PATTERNS[i % DECO_PATTERNS.length].map((d, j) => ({
+        type: d.t,
+        x: d.rx * W,
+        y: i * SEGMENT_H + d.ry * SEGMENT_H,
+        size: SIZES[j % SIZES.length],
+        past: isPast,
+      }));
+    });
+  }, [pathLevels, currentLevel, W]);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim  = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    if (!isCurrent) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.12, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1,    duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [isCurrent]);
-
-  const ICONS = ['🥚','🐣','📖','⭐','🚀','🔥','⚡','💎','🏆','👑','🌟'];
-  const icon = ICONS[Math.min(nodeLevel, ICONS.length - 1)];
-
-  const side = nodeLevel % 2 === 0 ? 'left' : 'right';
+    const p = Animated.loop(Animated.sequence([
+      Animated.timing(pulseAnim, { toValue: 1.13, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 1,    duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]));
+    const g = Animated.loop(Animated.sequence([
+      Animated.timing(glowAnim, { toValue: 0.6, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 0.25, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]));
+    p.start(); g.start();
+    return () => { p.stop(); g.stop(); };
+  }, []);
 
   return (
-    <View style={[styles.nodeRow, side === 'right' && { flexDirection: 'row-reverse' }]}>
-      {/* Connector line */}
-      {!isLast && (
-        <View style={[styles.nodeConnector, {
-          backgroundColor: isPast ? accentColor : presetValues.borderColor,
-          left: side === 'left' ? 42 : undefined,
-          right: side === 'right' ? 42 : undefined,
-        }]} />
-      )}
+    <View style={{ height: totalH, position: 'relative' }}>
 
-      {/* Circle */}
-      <Animated.View style={[
-        styles.nodeCircle,
-        isCurrent && { transform: [{ scale: pulse }] },
-        {
-          backgroundColor: isFuture ? presetValues.bgSecondary : isCurrent ? accentColor : accentColor + 'CC',
-          borderColor: isCurrent ? '#fff' : 'transparent',
-          borderWidth: isCurrent ? 3 : 0,
-          shadowColor: isCurrent ? accentColor : 'transparent',
-          shadowOpacity: isCurrent ? 0.6 : 0,
-          shadowRadius: 8,
-          elevation: isCurrent ? 6 : 0,
-        },
-      ]}>
-        <Text style={[styles.nodeIcon, { opacity: isFuture ? 0.3 : 1 }]}>
-          {isFuture ? '🔒' : icon}
-        </Text>
-      </Animated.View>
+      {/* ── CSS-border L-shaped road (one view per segment) ── */}
+      {Array.from({ length: pathLevels.length - 1 }, (_, i) => {
+        const fromLeft  = i % 2 === 0;
+        const sy        = i * SEGMENT_H + NODE_D + 2;
+        const ey        = (i + 1) * SEGMENT_H + 2;
+        const isPast    = pathLevels[i] < currentLevel;
+        const borderStyle = fromLeft
+          ? { borderTopWidth: PATH_W, borderRightWidth: PATH_W, borderTopRightRadius: cornerR }
+          : { borderTopWidth: PATH_W, borderLeftWidth: PATH_W,  borderTopLeftRadius:  cornerR };
+        return (
+          <View key={`seg${i}`} style={{
+            position: 'absolute',
+            left: LX, top: sy,
+            width: segW,
+            height: Math.max(ey - sy, 1),
+            ...borderStyle,
+            borderColor: isPast ? accentColor : accentColor + '30',
+            backgroundColor: 'transparent',
+          }} />
+        );
+      })}
 
-      {/* Label */}
-      <View style={[styles.nodeLabel, side === 'right' && { alignItems: 'flex-end' }]}>
-        <Text style={[styles.nodeLevelNum, {
-          color: isCurrent ? accentColor : isFuture ? presetValues.textSecondary : presetValues.text,
-          fontSize: fontSizes.base + (isCurrent ? 2 : 0),
-          fontWeight: isCurrent ? '800' : '600',
-        }]}>
-          {isCurrent ? '▶ ' : ''}Level {nodeLevel}
-        </Text>
-        <Text style={[styles.nodeLevelTitle, {
-          color: isCurrent ? accentColor : isFuture ? presetValues.borderColor : presetValues.textSecondary,
-          fontSize: fontSizes.base - 2,
-        }]}>
-          {title}{isCurrent ? ' (You)' : ''}
-        </Text>
-        {!isFuture && (
-          <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 3, marginTop: 1 }]}>
-            {xpNeeded} XP
-          </Text>
-        )}
-      </View>
+      {/* ── Geometric decorations ── */}
+      {decos.map((d, i) => (
+        <GeoDeco
+          key={`dc${i}`}
+          type={d.type}
+          x={d.x}
+          y={d.y}
+          size={d.size}
+          color={d.past ? accentColor : accentColor + '55'}
+        />
+      ))}
+
+      {/* ── Level nodes ── */}
+      {pathLevels.map((nodeLevel: number, i: number) => {
+        const fromLeft  = i % 2 === 0;
+        const ncx       = fromLeft ? LX : RX;
+        const ncy       = i * SEGMENT_H + NODE_D / 2 + 2;
+        const isCurrent = nodeLevel === currentLevel;
+        const isPast    = nodeLevel < currentLevel;
+        const isFuture  = nodeLevel > currentLevel;
+        const nd        = isCurrent ? NODE_D_C : NODE_D;
+        const icon      = isFuture ? '🔒' : PATH_ICONS[Math.min(nodeLevel, PATH_ICONS.length - 1)];
+        const title     = LEVEL_TITLES[Math.min(nodeLevel, LEVEL_TITLES.length - 1)];
+        const labelRight = fromLeft;
+        const labelX     = labelRight ? ncx + nd / 2 + 10 : 0;
+        const labelW     = labelRight ? W - (ncx + nd / 2 + 10) - 4 : ncx - nd / 2 - 14;
+
+        return (
+          <View key={`n${nodeLevel}`}>
+            {/* Breathing glow for current node */}
+            {isCurrent && (
+              <Animated.View style={{
+                position: 'absolute',
+                left: ncx - nd / 2 - 12, top: ncy - nd / 2 - 12,
+                width: nd + 24, height: nd + 24, borderRadius: (nd + 24) / 2,
+                backgroundColor: accentColor, opacity: glowAnim,
+                transform: [{ scale: pulseAnim }],
+              }} />
+            )}
+            {/* Faint ring for completed nodes */}
+            {isPast && (
+              <View style={{
+                position: 'absolute',
+                left: ncx - nd / 2 - 5, top: ncy - nd / 2 - 5,
+                width: nd + 10, height: nd + 10, borderRadius: (nd + 10) / 2,
+                borderWidth: 2, borderColor: accentColor + '40',
+              }} />
+            )}
+            {/* Node circle */}
+            <Animated.View style={[{
+              position: 'absolute',
+              left: ncx - nd / 2, top: ncy - nd / 2,
+              width: nd, height: nd, borderRadius: nd / 2,
+              backgroundColor: isFuture ? presetValues.bgSecondary
+                             : isPast   ? accentColor + 'CC'
+                             :            accentColor,
+              alignItems: 'center', justifyContent: 'center',
+              borderWidth: isCurrent ? 3 : 0, borderColor: '#fff',
+              shadowColor: isCurrent ? accentColor : isPast ? accentColor : 'transparent',
+              shadowOpacity: isCurrent ? 0.6 : isPast ? 0.2 : 0,
+              shadowRadius: isCurrent ? 14 : 4,
+              elevation: isCurrent ? 10 : isPast ? 3 : 0,
+            }, isCurrent && { transform: [{ scale: pulseAnim }] }]}>
+              <Text style={{ fontSize: isCurrent ? 28 : 22, opacity: isFuture ? 0.3 : 1 }}>
+                {isPast ? '✅' : icon}
+              </Text>
+            </Animated.View>
+            {/* Label */}
+            <View style={{
+              position: 'absolute',
+              left: labelX, top: ncy - 26,
+              width: Math.max(labelW, 70),
+              alignItems: labelRight ? 'flex-start' : 'flex-end',
+            }}>
+              <Text style={{
+                color: isCurrent ? accentColor : isFuture ? presetValues.borderColor : presetValues.text,
+                fontSize: fontSizes.base + (isCurrent ? 1 : 0),
+                fontWeight: isCurrent ? '800' : '600',
+              }} numberOfLines={1}>
+                {isCurrent ? '▶ ' : ''}Lv.{nodeLevel}
+              </Text>
+              <Text style={{
+                color: isCurrent ? accentColor : isFuture ? presetValues.borderColor : presetValues.textSecondary,
+                fontSize: fontSizes.base - 2,
+                fontWeight: isCurrent ? '700' : '500',
+                marginTop: 2,
+              }} numberOfLines={1}>
+                {title}{isCurrent ? ' ←' : ''}
+              </Text>
+              {!isFuture && (
+                <Text style={{ color: presetValues.textSecondary, fontSize: fontSizes.base - 4, marginTop: 1 }}>
+                  {nodeLevel * 100} XP
+                </Text>
+              )}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -326,20 +477,13 @@ export default function GameScreen() {
           </Text>
 
           {showPath && (
-            <View style={styles.pathContainer}>
-              {pathLevels.map((lvl, idx) => (
-                <LevelNode
-                  key={lvl}
-                  nodeLevel={lvl}
-                  currentLevel={level}
-                  xp={xp}
-                  accentColor={accentColor}
-                  presetValues={presetValues}
-                  fontSizes={fontSizes}
-                  isLast={idx === pathLevels.length - 1}
-                />
-              ))}
-            </View>
+            <LevelPathCanvas
+              pathLevels={pathLevels}
+              currentLevel={level}
+              accentColor={accentColor}
+              presetValues={presetValues}
+              fontSizes={fontSizes}
+            />
           )}
         </View>
 
@@ -556,14 +700,7 @@ const styles = StyleSheet.create({
   checkMark: { fontWeight: '900', fontSize: 22 },
 
   // Level path
-  pathContainer: { paddingTop: 8 },
-  nodeRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 0, position: 'relative', minHeight: 80 },
-  nodeConnector: { position: 'absolute', width: 3, top: 52, height: 28, borderRadius: 2 },
-  nodeCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  nodeIcon: { fontSize: 24 },
-  nodeLabel: { flex: 1, paddingHorizontal: 14, paddingTop: 4 },
-  nodeLevelNum: {},
-  nodeLevelTitle: { marginTop: 1 },
+  pathContainer: { paddingTop: 4 },
 
   // Achievements
   achCount: { fontWeight: '700' },
