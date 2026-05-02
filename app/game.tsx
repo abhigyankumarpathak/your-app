@@ -85,6 +85,7 @@ const SEGMENT_H = 150;
 const NODE_D    = 60;
 const NODE_D_C  = 72;
 const PATH_W    = 13;
+const TOP_PAD   = 28;  // breathing room above first node so its label fits above the path
 
 const DECO_PATTERNS: { t: 'pill' | 'diamond' | 'sparkle'; rx: number; ry: number }[][] = [
   [{ t: 'sparkle', rx: 0.07, ry: 0.30 }, { t: 'pill',    rx: 0.88, ry: 0.18 }, { t: 'diamond', rx: 0.91, ry: 0.68 }],
@@ -149,8 +150,8 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
   const RX   = W * 0.78;
   const segW = RX - LX;
 
-  const totalH  = pathLevels.length * SEGMENT_H + 24;
-  const cornerR = Math.min(segW * 0.45, 50);
+  const totalH  = pathLevels.length * SEGMENT_H + 24 + TOP_PAD;
+  const cornerR = Math.min(segW * 0.45, 70);
 
   // Precompute geometric decorations
   type Deco = { type: string; x: number; y: number; size: number; past: boolean };
@@ -161,7 +162,7 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
       return DECO_PATTERNS[i % DECO_PATTERNS.length].map((d, j) => ({
         type: d.t,
         x: d.rx * W,
-        y: i * SEGMENT_H + d.ry * SEGMENT_H,
+        y: i * SEGMENT_H + d.ry * SEGMENT_H + TOP_PAD,
         size: SIZES[j % SIZES.length],
         past: isPast,
       }));
@@ -187,12 +188,16 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
   return (
     <View style={{ height: totalH, position: 'relative' }}>
 
-      {/* ── CSS-border L-shaped road (one view per segment) ── */}
+      {/* ── L-shaped road segments — each runs node-center to node-center
+             so the line threads through each node like one continuous trail.
+             Only the OUTSIDE corner of the L is rounded; rounding the open
+             edges (the default uniform borderRadius) creates ugly tails. ── */}
       {Array.from({ length: pathLevels.length - 1 }, (_, i) => {
-        const fromLeft  = i % 2 === 0;
-        const sy        = i * SEGMENT_H + NODE_D + 2;
-        const ey        = (i + 1) * SEGMENT_H + 2;
-        const isPast    = pathLevels[i] < currentLevel;
+        const fromLeft    = i % 2 === 0;
+        const sy          = i * SEGMENT_H + NODE_D / 2 + TOP_PAD;        // center of node i
+        const ey          = (i + 1) * SEGMENT_H + NODE_D / 2 + TOP_PAD;  // center of node i+1
+        const isPast      = pathLevels[i] < currentLevel;
+        const color       = isPast ? accentColor : accentColor + '30';
         const borderStyle = fromLeft
           ? { borderTopWidth: PATH_W, borderRightWidth: PATH_W, borderTopRightRadius: cornerR }
           : { borderTopWidth: PATH_W, borderLeftWidth: PATH_W,  borderTopLeftRadius:  cornerR };
@@ -200,10 +205,9 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
           <View key={`seg${i}`} style={{
             position: 'absolute',
             left: LX, top: sy,
-            width: segW,
-            height: Math.max(ey - sy, 1),
+            width: segW, height: ey - sy,
             ...borderStyle,
-            borderColor: isPast ? accentColor : accentColor + '30',
+            borderColor: color,
             backgroundColor: 'transparent',
           }} />
         );
@@ -225,7 +229,7 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
       {pathLevels.map((nodeLevel: number, i: number) => {
         const fromLeft  = i % 2 === 0;
         const ncx       = fromLeft ? LX : RX;
-        const ncy       = i * SEGMENT_H + NODE_D / 2 + 2;
+        const ncy       = i * SEGMENT_H + NODE_D / 2 + TOP_PAD;
         const isCurrent = nodeLevel === currentLevel;
         const isPast    = nodeLevel < currentLevel;
         const isFuture  = nodeLevel > currentLevel;
@@ -276,10 +280,10 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
                 {isPast ? '✅' : icon}
               </Text>
             </Animated.View>
-            {/* Label */}
+            {/* Label — sits above the path stroke so the line doesn't bisect it */}
             <View style={{
               position: 'absolute',
-              left: labelX, top: ncy - 26,
+              left: labelX, top: ncy - 52,
               width: Math.max(labelW, 70),
               alignItems: labelRight ? 'flex-start' : 'flex-end',
             }}>
@@ -312,14 +316,13 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
 }
 
 export default function GameScreen() {
-  const { accentColor, presetValues, fontSizes, enableAnimations } = useTheme();
+  const { accentColor, presetValues, fontSizes } = useTheme();
 
   const [xp, setXp]                   = useState(0);
   const [streak, setStreak]            = useState(0);
   const [earned, setEarned]            = useState<string[]>([]);
   const [quests, setQuests]            = useState<QuestDisplay[]>([]);
   const [sessions, setSessions]        = useState<any[]>([]);
-  const [goalHours, setGoalHours]      = useState(0);
   const [achCategory, setAchCategory]  = useState<Achievement['category'] | 'all'>('all');
   const [showPath, setShowPath]        = useState(true);
   const [selectedAch, setSelectedAch]  = useState<Achievement | null>(null);
@@ -348,8 +351,6 @@ export default function GameScreen() {
     setStreak(streakData.current);
     setEarned(earnedIds);
     setSessions(allSessions);
-    setGoalHours(gh);
-
     const questData = await getTodayQuestDisplays(allSessions, gh);
     setQuests(questData);
 
@@ -427,7 +428,7 @@ export default function GameScreen() {
             Fresh quests every day · earn bonus XP
           </Text>
 
-          {quests.map((quest, idx) => {
+          {quests.map((quest) => {
             const barPct = quest.progress.total > 0 ? quest.progress.current / quest.progress.total : 0;
             return (
               <View key={quest.id} style={[styles.questCard, {
