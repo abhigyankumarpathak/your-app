@@ -11,7 +11,6 @@ import Onboarding from './onboarding';
 // Must be set at app root so foreground notifications show alerts
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,

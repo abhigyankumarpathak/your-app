@@ -235,7 +235,8 @@ export const updateQuestProgress = async (
 
   if (bonusXP > 0) {
     const raw = await AsyncStorage.getItem('focusXP');
-    const currentXP = raw ? parseInt(raw, 10) : 0;
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    const currentXP = Number.isFinite(parsed) ? parsed : 0;
     await AsyncStorage.setItem('focusXP', String(currentXP + bonusXP));
   }
 

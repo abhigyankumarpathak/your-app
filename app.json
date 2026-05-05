@@ -13,7 +13,8 @@
       "infoPlist": {
         "NSHealthShareUsageDescription": "This app needs access to your health data to track sleep and screen time",
         "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information"
-      }
+      },
+      "bundleIdentifier": "com.anonymous.focus"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,9 @@
         "READ_CALENDAR",
         "WRITE_CALENDAR",
         "QUERY_ALL_PACKAGES",
-        "PACKAGE_USAGE_STATS"
+        "PACKAGE_USAGE_STATS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "web": {

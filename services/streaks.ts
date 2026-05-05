@@ -79,7 +79,8 @@ export const loadStreakData = async (): Promise<StreakData> => {
 export const loadXP = async (): Promise<number> => {
   try {
     const raw = await AsyncStorage.getItem('focusXP');
-    return raw ? parseInt(raw, 10) : 0;
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
   } catch {
     return 0;
   }
