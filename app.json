@@ -4,7 +4,7 @@
     "slug": "focus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "focus",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,15 +23,26 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "QUERY_ALL_PACKAGES",
-        "PACKAGE_USAGE_STATS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.QUERY_ALL_PACKAGES",
+        "android.permission.PACKAGE_USAGE_STATS",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_EXTERNAL_STORAGE"
-      ]
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.QUERY_ALL_PACKAGES",
+        "android.permission.PACKAGE_USAGE_STATS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.focus"
     },
     "web": {
       "output": "static",
