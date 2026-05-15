@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
+    Image,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
@@ -12,8 +13,9 @@ import {
     View,
     useWindowDimensions
 } from 'react-native';
-import { checkCalendarPermission, openHealthSettings, openScreenTimeSettings, requestCalendarPermission } from '../services/permissions';
+import { AVATAR_OPTIONS, useTheme } from '../context/ThemeContext';
 import { hasNotificationPermission, requestNotificationPermission } from '../services/notifications';
+import { checkCalendarPermission, checkMediaLibraryPermission, openHealthSettings, openScreenTimeSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -47,12 +49,24 @@ export default function Onboarding({ onComplete }: Props) {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [calendarGranted, setCalendarGranted] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
+  const [mediaGranted, setMediaGranted] = useState(false);
+
+  const { avatar, setAvatar, avatarBg, setAvatarBg, avatarImage, setAvatarImage } = useTheme();
 
   // Pre-populate permission states in case they were already granted
   useEffect(() => {
     checkCalendarPermission().then(setCalendarGranted);
     hasNotificationPermission().then(setNotifGranted);
+    checkMediaLibraryPermission().then(setMediaGranted);
   }, []);
+
+  const handlePickPhoto = async () => {
+    const uri = await pickAvatarImage();
+    if (uri) {
+      await setAvatarImage(uri);
+      setMediaGranted(true);
+    }
+  };
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     grade: '',
@@ -213,6 +227,7 @@ export default function Onboarding({ onComplete }: Props) {
 
   const STEPS = [
     { title: "Hey there! 👋", subtitle: "Let's set up your Focus journey" },
+    { title: "Pick Your Look 🪄", subtitle: "Choose a profile picture — photo or emoji" },
     { title: "About You", subtitle: "Tell us a bit about your school life" },
     { title: "Your Subjects", subtitle: "What do you study? Pick all that apply" },
     { title: "Your Goals", subtitle: "What are you focusing on this year?" },
@@ -268,10 +283,11 @@ export default function Onboarding({ onComplete }: Props) {
 
   const canAdvance = () => {
     if (step === 0) return profile.name.trim().length > 0;
-    if (step === 1) return profile.grade.length > 0;
-    if (step === 2) return profile.subjects.length > 0;
-    if (step === 3) return profile.focusAreas.length > 0;
-    // step 4 (permissions) and step 5 (study goal) are always advanceable
+    // step 1 (avatar pick) is always advanceable — default is set
+    if (step === 2) return profile.grade.length > 0;
+    if (step === 3) return profile.subjects.length > 0;
+    if (step === 4) return profile.focusAreas.length > 0;
+    // step 5 (permissions) and step 6 (study goal) are always advanceable
     return true;
   };
 
@@ -337,10 +353,100 @@ export default function Onboarding({ onComplete }: Props) {
             )}
           </View>
 
-          {/* Step 1 — Grade & School */}
+          {/* Step 1 — Avatar (photo or emoji) */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
             <Text style={dynamicStyles.stepTitle}>{STEPS[1].title}</Text>
             <Text style={dynamicStyles.stepSubtitle}>{STEPS[1].subtitle}</Text>
+
+            {/* Big avatar preview */}
+            <View style={{ alignItems: 'center', marginVertical: responsiveSpacing(10) }}>
+              <View style={{
+                width: 120, height: 120, borderRadius: 60, overflow: 'hidden',
+                borderWidth: 4, borderColor: '#6366F1',
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: avatarBg,
+              }}>
+                {avatarImage ? (
+                  <Image source={{ uri: avatarImage }} style={{ width: '100%', height: '100%' }} />
+                ) : (
+                  <Text style={{ fontSize: 64 }}>{avatar}</Text>
+                )}
+              </View>
+              <Text style={[dynamicStyles.hintText, { textAlign: 'center', marginTop: responsiveSpacing(8) }]}>
+                Hi, {profile.name || 'friend'}!
+              </Text>
+            </View>
+
+            {/* Photo button */}
+            <TouchableOpacity
+              onPress={handlePickPhoto}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                backgroundColor: avatarImage ? '#6366F1' : '#EEF2FF',
+                borderWidth: 1.5, borderColor: '#6366F1',
+                paddingVertical: responsiveSpacing(12), borderRadius: 12, marginBottom: responsiveSpacing(8),
+              }}
+            >
+              <Text style={{ fontSize: 18 }}>📷</Text>
+              <Text style={{ color: avatarImage ? '#fff' : '#6366F1', fontWeight: '800', fontSize: responsiveFontSize(13) }}>
+                {avatarImage ? 'Change Photo' : 'Choose from Camera Roll'}
+              </Text>
+            </TouchableOpacity>
+
+            {avatarImage && (
+              <TouchableOpacity
+                onPress={() => setAvatarImage(null)}
+                style={{ alignSelf: 'center', paddingVertical: 6, marginBottom: responsiveSpacing(8) }}
+              >
+                <Text style={{ color: '#9CA3AF', fontWeight: '600', fontSize: responsiveFontSize(11) }}>✕ Remove photo</Text>
+              </TouchableOpacity>
+            )}
+
+            {!avatarImage && (
+              <>
+                <Text style={[dynamicStyles.inputLabel, { textAlign: 'center', marginTop: responsiveSpacing(6) }]}>
+                  OR PICK AN EMOJI
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+                  {AVATAR_OPTIONS.slice(0, 16).map((emoji) => {
+                    const sel = avatar === emoji;
+                    return (
+                      <TouchableOpacity
+                        key={emoji}
+                        onPress={() => setAvatar(emoji)}
+                        style={{
+                          width: 44, height: 44, borderRadius: 12,
+                          backgroundColor: sel ? '#6366F133' : '#F3F4F6',
+                          borderWidth: sel ? 2 : 1, borderColor: sel ? '#6366F1' : '#E5E7EB',
+                          alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+                  {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#EF4444', '#6366F1', '#06B6D4'].map((hex) => (
+                    <TouchableOpacity
+                      key={hex}
+                      onPress={() => setAvatarBg(hex)}
+                      style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: hex,
+                        borderWidth: avatarBg === hex ? 3 : 0, borderColor: '#fff',
+                      }}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Step 2 — Grade & School */}
+          <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
+            <Text style={dynamicStyles.stepTitle}>{STEPS[2].title}</Text>
+            <Text style={dynamicStyles.stepSubtitle}>{STEPS[2].subtitle}</Text>
 
             <Text style={dynamicStyles.inputLabel}>What grade are you in?</Text>
             <View style={[styles.chipGrid, { gap: responsiveSpacing(10) }]}>
@@ -370,10 +476,10 @@ export default function Onboarding({ onComplete }: Props) {
             />
           </View>
 
-          {/* Step 2 — Subjects */}
+          {/* Step 3 — Subjects */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
-            <Text style={dynamicStyles.stepTitle}>{STEPS[2].title}</Text>
-            <Text style={dynamicStyles.stepSubtitle}>{STEPS[2].subtitle}</Text>
+            <Text style={dynamicStyles.stepTitle}>{STEPS[3].title}</Text>
+            <Text style={dynamicStyles.stepSubtitle}>{STEPS[3].subtitle}</Text>
             <View style={[styles.chipGrid, { gap: responsiveSpacing(10) }]}>
               {SUBJECTS.map((s) => (
                 <TouchableOpacity
@@ -397,10 +503,10 @@ export default function Onboarding({ onComplete }: Props) {
             </Text>
           </View>
 
-          {/* Step 3 — Focus Areas */}
+          {/* Step 4 — Focus Areas */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
-            <Text style={dynamicStyles.stepTitle}>{STEPS[3].title}</Text>
-            <Text style={dynamicStyles.stepSubtitle}>{STEPS[3].subtitle}</Text>
+            <Text style={dynamicStyles.stepTitle}>{STEPS[4].title}</Text>
+            <Text style={dynamicStyles.stepSubtitle}>{STEPS[4].subtitle}</Text>
             <View style={[styles.focusGrid, { gap: responsiveSpacing(10) }]}>
               {FOCUS_AREAS.map((f) => (
                 <TouchableOpacity
@@ -425,13 +531,13 @@ export default function Onboarding({ onComplete }: Props) {
             </View>
           </View>
 
-          {/* Step 4 — Permissions */}
+          {/* Step 5 — Permissions */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
             <View style={styles.emojiContainer}>
               <Text style={dynamicStyles.bigEmoji}>🔒</Text>
             </View>
-            <Text style={dynamicStyles.stepTitle}>{STEPS[4].title}</Text>
-            <Text style={dynamicStyles.stepSubtitle}>{STEPS[4].subtitle}</Text>
+            <Text style={dynamicStyles.stepTitle}>{STEPS[5].title}</Text>
+            <Text style={dynamicStyles.stepSubtitle}>{STEPS[5].subtitle}</Text>
 
             {/* Calendar */}
             <View style={[styles.permCard, { borderColor: calendarGranted ? '#10B981' : '#E5E7EB' }]}>
@@ -488,6 +594,28 @@ export default function Onboarding({ onComplete }: Props) {
               </View>
             </View>
 
+            {/* Photo Library */}
+            <View style={[styles.permCard, { borderColor: mediaGranted ? '#10B981' : '#E5E7EB' }]}>
+              <View style={styles.permRow}>
+                <Text style={{ fontSize: responsiveFontSize(22) }}>📷</Text>
+                <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
+                  <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Photo Library</Text>
+                  <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>For custom profile pictures</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.permBtn, { backgroundColor: mediaGranted ? '#10B981' : '#6366F1' }]}
+                  onPress={async () => {
+                    const g = await requestMediaLibraryPermission();
+                    setMediaGranted(g);
+                  }}
+                >
+                  <Text style={[styles.permBtnText, { fontSize: responsiveFontSize(12) }]}>
+                    {mediaGranted ? '✓ Granted' : 'Allow'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Notifications */}
             <View style={[styles.permCard, { borderColor: notifGranted ? '#10B981' : '#E5E7EB' }]}>
               <View style={styles.permRow}>
@@ -515,7 +643,7 @@ export default function Onboarding({ onComplete }: Props) {
             </Text>
           </View>
 
-          {/* Step 5 — Study Goal & Done */}
+          {/* Step 6 — Study Goal & Done */}
           <View style={[styles.slide, { width: dimensions.width, paddingHorizontal: responsiveSpacing(28), paddingTop: responsiveSpacing(16) }]}>
             <View style={styles.emojiContainer}>
               <Text style={dynamicStyles.bigEmoji}>🚀</Text>

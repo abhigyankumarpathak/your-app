@@ -1,30 +1,39 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Avatar from '../components/Avatar';
 import { useTheme } from '../context/ThemeContext';
 import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
 import { ALL_ACHIEVEMENTS, getLevel, getLevelTitle, loadAchievements, loadStreakData, loadXP } from '../services/streaks';
 
-function StatCard({ label, value, unit, icon, color, route }: any) {
-  const { fontSizes, presetValues } = useTheme();
+function StatCard({ label, value, unit, icon, color, route, presetValues, fontSizes, delay }: any) {
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.quad) }).start();
+  }, []);
   return (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      onPress={() => router.push(route)}
-      style={[styles.card, { backgroundColor: presetValues.cardBg, borderLeftColor: color, shadowColor: color }]}
-    >
-      <Text style={[styles.cardIcon, { fontSize: fontSizes.heading + 8 }]}>{icon}</Text>
-      <Text style={[styles.cardValue, { fontSize: fontSizes.heading, color: presetValues.text }]}>
-        {value}
-        <Text style={[styles.cardUnit, { fontSize: fontSizes.base, color: presetValues.textSecondary }]}>
-          {' '}{unit}
+    <Animated.View style={{
+      opacity: fade,
+      transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+      width: '48%',
+    }}>
+      <TouchableOpacity
+        activeOpacity={0.78}
+        onPress={() => router.push(route)}
+        style={[styles.statCard, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}
+      >
+        <View style={[styles.statIconBox, { backgroundColor: color + '1F' }]}>
+          <Text style={{ fontSize: 22 }}>{icon}</Text>
+        </View>
+        <Text style={[styles.statValue, { color: presetValues.text, fontSize: fontSizes.heading - 2 }]}>
+          {value}
         </Text>
-      </Text>
-      <Text style={[styles.cardLabel, { fontSize: fontSizes.base - 1, color: presetValues.textSecondary }]}>{label}</Text>
-      <Text style={[styles.cardArrow, { color: presetValues.textSecondary }]}>→</Text>
-    </TouchableOpacity>
+        <Text style={[styles.statUnit, { color: presetValues.textSecondary, fontSize: fontSizes.base - 3 }]}>{unit}</Text>
+        <Text style={[styles.statLabel, { color: presetValues.text, fontSize: fontSizes.base - 1 }]}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -35,15 +44,39 @@ function getTimeOfDay() {
   return 'evening';
 }
 
+function getTimeEmoji() {
+  const h = new Date().getHours();
+  if (h < 6)  return '🌙';
+  if (h < 12) return '☀️';
+  if (h < 17) return '🌤️';
+  if (h < 20) return '🌇';
+  return '🌙';
+}
+
+const MOTIVATIONS = [
+  '"Small steps every day add up to big wins."',
+  '"You\'re building a future self that thanks you."',
+  '"Focus beats talent. Show up today."',
+  '"One session today > zero perfect sessions tomorrow."',
+  '"Your streak is your superpower."',
+  '"Future you is watching. Make them proud."',
+];
+
 export default function Dashboard() {
   const { accentColor, presetValues, fontSizes } = useTheme();
   const [stats, setStats] = useState({ studyHours: 0, tasks: 0, sleepHours: 0, screenTime: 0 });
   const [streak, setStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
   const [xp, setXp] = useState(0);
   const [achievements, setAchievements] = useState<string[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
   const [questDisplays, setQuestDisplays] = useState<QuestDisplay[]>([]);
+  const [userName, setUserName] = useState('');
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length];
+
+  const heroAnim = useRef(new Animated.Value(0)).current;
+  const flameAnim = useRef(new Animated.Value(1)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -51,12 +84,21 @@ export default function Dashboard() {
     }, [])
   );
 
+  useEffect(() => {
+    Animated.spring(heroAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 9 }).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(flameAnim, { toValue: 1.18, duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+      Animated.timing(flameAnim, { toValue: 1,    duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+    ])).start();
+  }, []);
+
   const loadAll = async () => {
     try {
-      const [sessions, tasks, wellness] = await Promise.all([
+      const [sessions, tasks, wellness, profileRaw] = await Promise.all([
         AsyncStorage.getItem('focusSessions'),
         AsyncStorage.getItem('focusTasks'),
         AsyncStorage.getItem('focusWellness'),
+        AsyncStorage.getItem('focusUserProfile'),
       ]);
 
       let studyHours = 0, taskCount = 0, sleepHours = 0, screenTime = 0;
@@ -78,14 +120,16 @@ export default function Dashboard() {
       }
       setStats({ studyHours, tasks: taskCount, sleepHours, screenTime });
 
-      const profile = await AsyncStorage.getItem('focusUserProfile');
-      const goalHours = profile ? (parseFloat(JSON.parse(profile).studyGoalHours) || 0) : 0;
+      const profile = profileRaw ? JSON.parse(profileRaw) : null;
+      setUserName(profile?.name || '');
+      const goalHours = profile ? (parseFloat(profile.studyGoalHours) || 0) : 0;
 
       const [streakData, xpVal, earned, quests] = await Promise.all([
         loadStreakData(), loadXP(), loadAchievements(),
         getTodayQuestDisplays(allSessions, goalHours),
       ]);
       setStreak(streakData.current);
+      setLongestStreak(streakData.longest);
       setXp(xpVal);
       setAchievements(earned);
       setQuestDisplays(quests);
@@ -96,46 +140,85 @@ export default function Dashboard() {
 
   const level = getLevel(xp);
   const xpInLevel = xp - level * 100;
+  const xpPct = xpInLevel / 100;
+  const goalToday = stats.studyHours; // already hours
+  const doneQuests = questDisplays.filter(q => q.completed).length;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
-        <Text style={[styles.greeting, { fontSize: fontSizes.heading + 6, color: '#fff', fontWeight: 'bold' }]}>
-          Good {getTimeOfDay()} 👋
-        </Text>
-        <Text style={[styles.date, { fontSize: fontSizes.base, color: 'rgba(255,255,255,0.8)' }]}>{today}</Text>
-      </View>
+    <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]} showsVerticalScrollIndicator={false}>
+      {/* ── Modern hero card ───────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          styles.hero,
+          {
+            backgroundColor: accentColor,
+            opacity: heroAnim,
+            transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+          },
+        ]}
+      >
+        {/* Floating decorative circles */}
+        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.10)', top: -40, right: -30, width: 140, height: 140 }]} />
+        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.08)', bottom: -50, left: -40, width: 160, height: 160 }]} />
+
+        <View style={styles.heroTop}>
+          <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.8}>
+            <Avatar size={56} borderColor="rgba(255,255,255,0.7)" borderWidth={3} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.greeting, { fontSize: fontSizes.heading, color: '#fff' }]}>
+              {getTimeEmoji()} {userName ? `Hi, ${userName}!` : `Good ${getTimeOfDay()}!`}
+            </Text>
+            <Text style={[styles.date, { fontSize: fontSizes.base - 1, color: 'rgba(255,255,255,0.85)' }]}>{today}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.motivation, { fontSize: fontSizes.base - 1 }]}>{motivation}</Text>
+
+        {/* Level + XP bar */}
+        <View style={styles.heroLevelRow}>
+          <View style={styles.heroLevelBadge}>
+            <Text style={styles.heroLevelText}>Lv {level}</Text>
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={styles.heroXPTrack}>
+              <View style={[styles.heroXPFill, { width: `${xpPct * 100}%` as any }]} />
+            </View>
+            <View style={styles.heroXPLabels}>
+              <Text style={styles.heroXPText}>{getLevelTitle(xp)} · {xp} XP</Text>
+              <Text style={styles.heroXPText}>{100 - xpInLevel} → Lv {level + 1}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick stat row */}
+        <View style={styles.heroChips}>
+          <TouchableOpacity onPress={() => setShowAchievements((v) => !v)} activeOpacity={0.85} style={styles.heroChip}>
+            <Animated.Text style={[styles.heroChipIcon, { transform: [{ scale: flameAnim }] }]}>🔥</Animated.Text>
+            <View>
+              <Text style={styles.heroChipValue}>{streak}</Text>
+              <Text style={styles.heroChipLabel}>day streak</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/game')} activeOpacity={0.85} style={styles.heroChip}>
+            <Text style={styles.heroChipIcon}>🏅</Text>
+            <View>
+              <Text style={styles.heroChipValue}>{achievements.length}</Text>
+              <Text style={styles.heroChipLabel}>of {ALL_ACHIEVEMENTS.length} badges</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/game')} activeOpacity={0.85} style={styles.heroChip}>
+            <Text style={styles.heroChipIcon}>⚔️</Text>
+            <View>
+              <Text style={styles.heroChipValue}>{doneQuests}/{questDisplays.length || 3}</Text>
+              <Text style={styles.heroChipLabel}>quests</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
 
       <View style={styles.content}>
-        {/* ── Streak / XP banner ─────────────────────────────────────── */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => setShowAchievements((v) => !v)}
-          style={[styles.streakBanner, { backgroundColor: presetValues.cardBg, borderColor: accentColor }]}
-        >
-          <View style={styles.streakLeft}>
-            <Text style={[styles.streakFire, { fontSize: fontSizes.heading }]}>🔥</Text>
-            <View>
-              <Text style={[styles.streakText, { color: presetValues.text, fontSize: fontSizes.base + 1 }]}>
-                {streak > 0 ? `${streak}-day streak` : 'Start your streak today!'}
-              </Text>
-              <Text style={[styles.streakSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                Level {level}: {getLevelTitle(xp)} · {xp} XP
-              </Text>
-            </View>
-          </View>
-          <View style={styles.streakRight}>
-            {/* XP progress pip */}
-            <View style={[styles.xpTrack, { backgroundColor: presetValues.bgSecondary }]}>
-              <View style={[styles.xpFill, { width: `${xpInLevel}%` as any, backgroundColor: accentColor }]} />
-            </View>
-            <Text style={[styles.xpNext, { color: presetValues.textSecondary, fontSize: fontSizes.base - 3 }]}>
-              {100 - xpInLevel} XP to Lvl {level + 1}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Achievements shelf */}
+        {/* Achievements shelf — collapsible */}
         {showAchievements && (
           <View style={[styles.achShelf, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
             <Text style={[styles.achTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
@@ -157,24 +240,28 @@ export default function Dashboard() {
           </View>
         )}
 
-        {/* ── Quests teaser ──────────────────────────────────────────── */}
+        {/* Quest teaser */}
         {questDisplays.length > 0 && (() => {
-          const doneCount = questDisplays.filter(q => q.completed).length;
-          const allDone = doneCount === questDisplays.length;
+          const allDone = doneQuests === questDisplays.length;
           return (
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={() => router.push('/game')}
-              style={[styles.questTeaser, { backgroundColor: allDone ? accentColor : presetValues.cardBg, borderColor: accentColor }]}
+              style={[styles.questTeaser, {
+                backgroundColor: allDone ? accentColor : presetValues.cardBg,
+                borderColor: accentColor,
+              }]}
             >
               <View style={styles.questTeaserLeft}>
-                <Text style={{ fontSize: 28 }}>⚔️</Text>
+                <View style={[styles.questIconBubble, { backgroundColor: allDone ? 'rgba(255,255,255,0.25)' : accentColor + '22' }]}>
+                  <Text style={{ fontSize: 24 }}>⚔️</Text>
+                </View>
                 <View>
                   <Text style={[styles.questTeaserTitle, { color: allDone ? '#fff' : presetValues.text, fontSize: fontSizes.base + 1 }]}>
                     Daily Quests
                   </Text>
-                  <Text style={[styles.questTeaserSub, { color: allDone ? 'rgba(255,255,255,0.8)' : presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                    {allDone ? '🎉 All done — great work!' : `${doneCount}/${questDisplays.length} completed`}
+                  <Text style={[styles.questTeaserSub, { color: allDone ? 'rgba(255,255,255,0.85)' : presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                    {allDone ? '🎉 All done — great work!' : `${doneQuests}/${questDisplays.length} completed · earn XP`}
                   </Text>
                 </View>
               </View>
@@ -182,27 +269,42 @@ export default function Dashboard() {
                 {questDisplays.map(q => (
                   <Text key={q.id} style={{ fontSize: 18, opacity: q.completed ? 1 : 0.3 }}>{q.icon}</Text>
                 ))}
-                <Text style={[{ color: allDone ? '#fff' : presetValues.textSecondary, marginLeft: 4 }]}>→</Text>
               </View>
             </TouchableOpacity>
           );
         })()}
 
-        <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title, marginBottom: 16, marginTop: 16 }]}>
-          📊 Today's Overview
+        <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+          📊 Today
         </Text>
 
-        <StatCard label="Study Time"      value={stats.studyHours} unit="hours" icon="🎯"  color={accentColor} route="/study" />
-        <StatCard label="Tasks Pending"   value={stats.tasks}      unit="tasks" icon="✓"   color={accentColor} route="/tasks" />
-        <StatCard label="Sleep Last Night" value={stats.sleepHours} unit="hours" icon="😴" color={accentColor} route="/wellness" />
-        <StatCard label="Screen Time"     value={stats.screenTime} unit="hours" icon="📵"  color={accentColor} route="/screentime" />
+        <View style={styles.statGrid}>
+          <StatCard label="Study Time"   value={stats.studyHours} unit="hours" icon="🎯" color={accentColor} route="/study"      presetValues={presetValues} fontSizes={fontSizes} delay={0}   />
+          <StatCard label="Tasks"        value={stats.tasks}      unit="open"  icon="✅" color={accentColor} route="/tasks"      presetValues={presetValues} fontSizes={fontSizes} delay={80}  />
+          <StatCard label="Sleep"        value={stats.sleepHours} unit="hours" icon="😴" color={accentColor} route="/wellness"   presetValues={presetValues} fontSizes={fontSizes} delay={160} />
+          <StatCard label="Screen Time"  value={stats.screenTime} unit="hours" icon="📵" color={accentColor} route="/screentime" presetValues={presetValues} fontSizes={fontSizes} delay={240} />
+        </View>
 
-        <View style={[styles.tipBox, { backgroundColor: presetValues.bgSecondary, borderColor: accentColor }]}>
-          <Text style={[styles.tipTitle, { color: presetValues.text, fontSize: fontSizes.base + 1, fontWeight: '600' }]}>
+        {/* Quick action — start a session */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => router.push('/study')}
+          style={[styles.ctaBtn, { backgroundColor: accentColor }]}
+        >
+          <Text style={styles.ctaIcon}>▶</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.ctaTitle, { fontSize: fontSizes.base + 1 }]}>Start a study session</Text>
+            <Text style={styles.ctaSub}>Tap to launch the focus timer</Text>
+          </View>
+          <Text style={styles.ctaArrow}>→</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.tipBox, { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor }]}>
+          <Text style={[styles.tipTitle, { color: presetValues.text, fontSize: fontSizes.base + 1, fontWeight: '700' }]}>
             💡 Quick Tips
           </Text>
           <Text style={[styles.tipText, { color: presetValues.textSecondary, fontSize: fontSizes.base, lineHeight: 20 }]}>
-            • Set study goals each day{'\n'}• Log your sleep for better tracking{'\n'}• Take breaks during long sessions
+            • Set daily goals and beat them{'\n'}• Customize your color & avatar in Settings{'\n'}• Complete quests for bonus XP
           </Text>
         </View>
       </View>
@@ -212,53 +314,108 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 },
-  greeting: { marginBottom: 4 },
-  date: { fontWeight: '500' },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 },
-  sectionTitle: { fontWeight: '600' },
 
-  streakBanner: {
-    borderRadius: 14, padding: 14, borderWidth: 1.5,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  // Hero
+  hero: {
+    paddingTop: 48, paddingHorizontal: 20, paddingBottom: 22,
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
   },
-  streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  streakFire: {},
-  streakText: { fontWeight: '700' },
-  streakSub: { fontWeight: '500', marginTop: 1 },
-  streakRight: { alignItems: 'flex-end', gap: 4, minWidth: 90 },
-  xpTrack: { height: 6, width: 80, borderRadius: 3, overflow: 'hidden' },
-  xpFill: { height: '100%', borderRadius: 3 },
-  xpNext: { fontWeight: '600' },
+  heroBlob: { position: 'absolute', borderRadius: 999 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  heroAvatar: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3,
+  },
+  greeting: { fontWeight: '800', marginBottom: 2 },
+  date: { fontWeight: '500' },
+  motivation: {
+    color: 'rgba(255,255,255,0.9)',
+    fontStyle: 'italic',
+    fontWeight: '500',
+    marginBottom: 14,
+  },
 
-  achShelf: { borderRadius: 12, padding: 12, marginTop: 8, borderWidth: 1 },
-  achTitle: { fontWeight: '600', marginBottom: 10 },
+  heroLevelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  heroLevelBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  heroLevelText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  heroXPTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden' },
+  heroXPFill: { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
+  heroXPLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  heroXPText: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '700' },
+
+  heroChips: { flexDirection: 'row', gap: 8 },
+  heroChip: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 14,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  heroChipIcon: { fontSize: 22 },
+  heroChipValue: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  heroChipLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '600' },
+
+  // Body
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  sectionTitle: { fontWeight: '800', marginBottom: 12, marginTop: 16 },
+
+  // Achievements shelf
+  achShelf: { borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1 },
+  achTitle: { fontWeight: '700', marginBottom: 10 },
   achRow: { gap: 8, paddingBottom: 4 },
   achBadge: { borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5, minWidth: 68 },
   achIcon: { fontSize: 22, marginBottom: 4 },
   achLabel: { fontWeight: '600', textAlign: 'center' },
 
-  card: {
-    borderRadius: 14, padding: 16, marginBottom: 12, borderLeftWidth: 4,
-    shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  // Stat grid
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  statCard: {
+    borderRadius: 18, padding: 14, borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
-  cardIcon: { marginBottom: 4 },
-  cardValue: { fontWeight: 'bold', marginBottom: 4 },
-  cardUnit: { fontWeight: 'normal' },
-  cardLabel: { fontWeight: '500' },
-  cardArrow: { position: 'absolute', right: 14, top: '50%', fontSize: 16, fontWeight: '600' },
+  statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  statValue: { fontWeight: '900', lineHeight: 28 },
+  statUnit: { fontWeight: '600', marginTop: -2, marginBottom: 6 },
+  statLabel: { fontWeight: '600' },
 
-  tipBox: { borderRadius: 12, padding: 14, marginTop: 20, borderWidth: 1 },
-  tipTitle: { marginBottom: 8 },
-  tipText: { fontWeight: '500' },
+  // CTA
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 18,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  },
+  ctaIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    color: '#fff', fontSize: 18, fontWeight: '900',
+    textAlign: 'center', textAlignVertical: 'center', lineHeight: 40,
+  },
+  ctaTitle: { color: '#fff', fontWeight: '800' },
+  ctaSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '500', marginTop: 1 },
+  ctaArrow: { color: '#fff', fontSize: 22, fontWeight: '800' },
 
+  // Quest teaser
   questTeaser: {
-    borderRadius: 14, padding: 14, borderWidth: 1.5, marginTop: 12,
+    borderRadius: 16, padding: 14, borderWidth: 1.5, marginTop: 12, marginBottom: 4,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  questTeaserLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  questTeaserTitle: { fontWeight: '700' },
+  questTeaserLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  questIconBubble: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  questTeaserTitle: { fontWeight: '800' },
   questTeaserSub: { fontWeight: '500', marginTop: 1 },
   questTeaserRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+
+  // Tip
+  tipBox: { borderRadius: 16, padding: 14, marginTop: 18, borderWidth: 1 },
+  tipTitle: { marginBottom: 8 },
+  tipText: { fontWeight: '500' },
 });

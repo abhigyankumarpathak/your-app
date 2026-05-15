@@ -1,6 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Alert, Linking, Platform } from 'react-native';
+
+// expo-image-picker is a native module. requireOptionalNativeModule returns
+// null instead of throwing when the native side isn't registered (e.g. the dev
+// client was built before this package was added).
+const _nativeImagePickerAvailable: boolean = !!requireOptionalNativeModule('ExponentImagePicker');
+
+let _ImagePicker: typeof import('expo-image-picker') | null = null;
+function getImagePicker(): typeof import('expo-image-picker') | null {
+  if (!_nativeImagePickerAvailable) return null;
+  if (_ImagePicker) return _ImagePicker;
+  try {
+    _ImagePicker = require('expo-image-picker');
+    return _ImagePicker;
+  } catch {
+    return null;
+  }
+}
+
+function showRebuildAlert() {
+  Alert.alert(
+    'Photo Picker Not Bundled',
+    'The native photo-picker module isn\'t in this build. Stop Metro and run "npx expo run:ios" (or run:android) to rebuild the dev client.',
+  );
+}
 
 export const PERMISSION_TYPES = {
   SCREEN_TIME: 'screenTime',
@@ -71,6 +96,68 @@ export const requestPermissions = async (): Promise<boolean> => {
 export const hasPermissionsBeenRequested = async (): Promise<boolean> => {
   const requested = await AsyncStorage.getItem('permissionsRequested');
   return requested === 'true';
+};
+
+// ── Camera Roll / Media Library ─────────────────────────────────────────────
+const isMediaGranted = (status: string) => status === 'granted' || status === 'limited';
+
+/** True if the native expo-image-picker module is registered in this build. */
+export const isImagePickerAvailable = (): boolean => _nativeImagePickerAvailable;
+
+export const checkMediaLibraryPermission = async (): Promise<boolean> => {
+  const ImagePicker = getImagePicker();
+  if (!ImagePicker) return false;
+  try {
+    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    return isMediaGranted(status);
+  } catch {
+    return false;
+  }
+};
+
+export const requestMediaLibraryPermission = async (): Promise<boolean> => {
+  const ImagePicker = getImagePicker();
+  if (!ImagePicker) {
+    showRebuildAlert();
+    return false;
+  }
+  try {
+    const current = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (isMediaGranted(current.status)) return true;
+    if (current.canAskAgain === false) {
+      Linking.openSettings();
+      return false;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    return isMediaGranted(status);
+  } catch (error) {
+    console.log('Media library permission error:', error);
+    return false;
+  }
+};
+
+/** Open the camera roll and return the picked image URI, or null. */
+export const pickAvatarImage = async (): Promise<string | null> => {
+  const ImagePicker = getImagePicker();
+  if (!ImagePicker) {
+    showRebuildAlert();
+    return null;
+  }
+  const granted = await requestMediaLibraryPermission();
+  if (!granted) return null;
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets || result.assets.length === 0) return null;
+    return result.assets[0].uri;
+  } catch (error) {
+    console.log('Image pick error:', error);
+    return null;
+  }
 };
 
 export const checkSystemHealth = async () => {

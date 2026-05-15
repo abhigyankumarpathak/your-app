@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSHealthShareUsageDescription": "This app needs access to your health data to track sleep and screen time",
-        "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information"
+        "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information",
+        "NSPhotoLibraryUsageDescription": "Focus uses your photo library so you can pick a custom profile picture."
       },
       "bundleIdentifier": "com.anonymous.focus"
     },
@@ -27,7 +28,9 @@
         "QUERY_ALL_PACKAGES",
         "PACKAGE_USAGE_STATS",
         "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR"
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -48,6 +51,12 @@
         {
           "calendarPermission": "Allow Focus to access your calendar to show your schedule.",
           "remindersPermission": "Allow Focus to access your reminders."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Focus uses your photo library so you can pick a custom profile picture."
         }
       ],
       [

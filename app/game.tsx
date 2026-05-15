@@ -12,18 +12,26 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Confetti from '../components/Confetti';
+import StarCatchGame from '../components/StarCatchGame';
+import StudyPet from '../components/StudyPet';
 import { useTheme } from '../context/ThemeContext';
 import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
 import {
   ALL_ACHIEVEMENTS,
   Achievement,
+  DailyTreasure,
   LEVEL_TITLES,
   RARITY_COLORS,
+  claimDailyTreasure,
   getLevel,
   getLevelTitle,
+  isTreasureAvailableToday,
   loadAchievements,
   loadStreakData,
+  loadTreasureState,
   loadXP,
+  todayDateKey,
 } from '../services/streaks';
 
 const CATEGORY_LABELS: Record<Achievement['category'], string> = {
@@ -326,8 +334,65 @@ export default function GameScreen() {
   const [achCategory, setAchCategory]  = useState<Achievement['category'] | 'all'>('all');
   const [showPath, setShowPath]        = useState(true);
   const [selectedAch, setSelectedAch]  = useState<Achievement | null>(null);
+  const [treasure, setTreasure]        = useState<DailyTreasure | null>(null);
+  const [treasureAvailable, setTreasureAvailable] = useState(false);
+  const [openingTreasure, setOpeningTreasure]     = useState(false);
+  const [showRewardModal, setShowRewardModal]     = useState<DailyTreasure | null>(null);
+  const [showStarGame, setShowStarGame]           = useState(false);
+  const [starGamePlayedToday, setStarGamePlayedToday] = useState(false);
+  const [confetti, setConfetti]                   = useState(false);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
+  const chestPulse = useRef(new Animated.Value(1)).current;
+  const chestShake = useRef(new Animated.Value(0)).current;
+  const rewardScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(chestPulse, { toValue: 1.07, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+      Animated.timing(chestPulse, { toValue: 1,    duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+    ])).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(chestShake, { toValue: 1, duration: 80,  useNativeDriver: true }),
+      Animated.timing(chestShake, { toValue: -1, duration: 80, useNativeDriver: true }),
+      Animated.timing(chestShake, { toValue: 0, duration: 80,  useNativeDriver: true }),
+      Animated.delay(3200),
+    ])).start();
+  }, []);
+
+  const openTreasure = async () => {
+    if (!treasureAvailable || openingTreasure) return;
+    setOpeningTreasure(true);
+    // Quick burst animation
+    Animated.sequence([
+      Animated.timing(chestPulse, { toValue: 1.3, duration: 200, useNativeDriver: true }),
+      Animated.timing(chestPulse, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+    ]).start(async () => {
+      const reward = await claimDailyTreasure();
+      setTreasure(reward);
+      setTreasureAvailable(false);
+      setXp((x) => x + reward.xp);
+      setShowRewardModal(reward);
+      rewardScale.setValue(0);
+      Animated.spring(rewardScale, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }).start();
+      chestPulse.setValue(1);
+      setOpeningTreasure(false);
+      // Fire confetti for rare+ rewards
+      if (reward.rarity !== 'common') {
+        setConfetti(true);
+        setTimeout(() => setConfetti(false), 2200);
+      }
+    });
+  };
+
+  const handleStarReward = (xp: number) => {
+    setXp((x) => x + xp);
+    setStarGamePlayedToday(true);
+    if (xp >= 50) {
+      setConfetti(true);
+      setTimeout(() => setConfetti(false), 2200);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -336,13 +401,17 @@ export default function GameScreen() {
   );
 
   const loadAll = async () => {
-    const [xpVal, streakData, earnedIds, rawSessions, profile] = await Promise.all([
+    const [xpVal, streakData, earnedIds, rawSessions, profile, treasureState, treasureAvail, starGameDate] = await Promise.all([
       loadXP(),
       loadStreakData(),
       loadAchievements(),
       AsyncStorage.getItem('focusSessions'),
       AsyncStorage.getItem('focusUserProfile'),
+      loadTreasureState(),
+      isTreasureAvailableToday(),
+      AsyncStorage.getItem('focusStarGameDate'),
     ]);
+    setStarGamePlayedToday(starGameDate === todayDateKey());
 
     const allSessions = rawSessions ? JSON.parse(rawSessions) : [];
     const gh = profile ? (parseFloat(JSON.parse(profile).studyGoalHours) || 0) : 0;
@@ -351,6 +420,8 @@ export default function GameScreen() {
     setStreak(streakData.current);
     setEarned(earnedIds);
     setSessions(allSessions);
+    setTreasure(treasureState);
+    setTreasureAvailable(treasureAvail);
     const questData = await getTodayQuestDisplays(allSessions, gh);
     setQuests(questData);
 
@@ -367,6 +438,16 @@ export default function GameScreen() {
   const title      = getLevelTitle(xp);
   const doneQuests = quests.filter(q => q.completed).length;
 
+  const prevAllDoneRef = useRef(false);
+  useEffect(() => {
+    const allDone = quests.length > 0 && doneQuests === quests.length;
+    if (allDone && !prevAllDoneRef.current) {
+      setConfetti(true);
+      setTimeout(() => setConfetti(false), 2200);
+    }
+    prevAllDoneRef.current = allDone;
+  }, [quests, doneQuests]);
+
   const categories = ['all', ...Array.from(new Set(ALL_ACHIEVEMENTS.map(a => a.category)))] as const;
   const visibleAch = achCategory === 'all'
     ? ALL_ACHIEVEMENTS
@@ -380,6 +461,9 @@ export default function GameScreen() {
 
       {/* ── Hero header ──────────────────────────────────────────────────── */}
       <View style={[styles.hero, { backgroundColor: accentColor }]}>
+        {/* Decorative blobs */}
+        <View style={[styles.heroBlob, { top: -50, left: -30, width: 160, height: 160, backgroundColor: 'rgba(255,255,255,0.08)' }]} />
+        <View style={[styles.heroBlob, { bottom: -40, right: -40, width: 180, height: 180, backgroundColor: 'rgba(255,255,255,0.10)' }]} />
         <Animated.View style={{ opacity: headerAnim, transform: [{ scale: headerAnim }], alignItems: 'center' }}>
           <XPRing pct={pct} size={120} color="#fff" level={level} />
           <Text style={[styles.heroTitle, { fontSize: fontSizes.heading + 2 }]}>{title}</Text>
@@ -413,6 +497,91 @@ export default function GameScreen() {
       </View>
 
       <View style={styles.body}>
+
+        {/* ── Study Pet companion ───────────────────────────────────────── */}
+        <StudyPet
+          level={level}
+          color={accentColor}
+          bg={presetValues.cardBg}
+          textColor={presetValues.text}
+          textSecondary={presetValues.textSecondary}
+        />
+
+        {/* ── Star Catch mini-game ──────────────────────────────────────── */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setShowStarGame(true)}
+          style={[styles.minigameCard, {
+            backgroundColor: starGamePlayedToday ? presetValues.cardBg : accentColor,
+            borderColor: accentColor,
+          }]}
+        >
+          <View style={[styles.minigameIconBox, {
+            backgroundColor: starGamePlayedToday ? presetValues.bgSecondary : 'rgba(255,255,255,0.22)',
+          }]}>
+            <Text style={{ fontSize: 36 }}>🌟</Text>
+          </View>
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={[styles.minigameTitle, {
+              color: starGamePlayedToday ? presetValues.text : '#fff',
+              fontSize: fontSizes.title,
+            }]}>
+              ⭐ Star Catch
+            </Text>
+            <Text style={[styles.minigameSub, {
+              color: starGamePlayedToday ? presetValues.textSecondary : 'rgba(255,255,255,0.85)',
+              fontSize: fontSizes.base - 1,
+            }]}>
+              {starGamePlayedToday
+                ? 'Come back tomorrow for another round'
+                : 'Tap falling stars · earn up to 250 bonus XP!'}
+            </Text>
+            {!starGamePlayedToday && (
+              <View style={styles.minigameBadge}>
+                <Text style={styles.minigameBadgeText}>PLAY NOW ▶</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* ── Daily Treasure ────────────────────────────────────────────── */}
+        <TouchableOpacity
+          activeOpacity={treasureAvailable ? 0.7 : 1}
+          onPress={openTreasure}
+          disabled={!treasureAvailable}
+          style={[styles.treasureCard, {
+            backgroundColor: treasureAvailable ? accentColor + '18' : presetValues.cardBg,
+            borderColor: treasureAvailable ? accentColor : presetValues.borderColor,
+          }]}
+        >
+          <Animated.View style={{
+            transform: [
+              { scale: chestPulse },
+              { translateX: treasureAvailable ? chestShake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] }) : 0 },
+            ],
+          }}>
+            <View style={[styles.treasureBubble, { backgroundColor: treasureAvailable ? accentColor : presetValues.bgSecondary }]}>
+              <Text style={{ fontSize: 36 }}>
+                {treasureAvailable ? '🎁' : (treasure?.emoji || '✓')}
+              </Text>
+            </View>
+          </Animated.View>
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={[styles.treasureTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+              {treasureAvailable ? '🎁 Daily Treasure!' : '✓ Treasure Claimed Today'}
+            </Text>
+            <Text style={[styles.treasureSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+              {treasureAvailable
+                ? 'Tap to open. Could be 10 to 150 bonus XP!'
+                : `+${treasure?.xp || 0} XP earned · come back tomorrow`}
+            </Text>
+            {treasureAvailable && (
+              <View style={[styles.treasureCta, { backgroundColor: accentColor }]}>
+                <Text style={styles.treasureCtaText}>TAP TO OPEN ✨</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
         {/* ── Daily Quests ──────────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
@@ -571,6 +740,60 @@ export default function GameScreen() {
 
       </View>
 
+      {/* ── Star Catch mini-game modal ────────────────────────────────────── */}
+      <StarCatchGame
+        visible={showStarGame}
+        onClose={() => setShowStarGame(false)}
+        accent={accentColor}
+        textColor={presetValues.text}
+        cardBg={presetValues.cardBg}
+        bgSecondary={presetValues.bgSecondary}
+        onReward={handleStarReward}
+      />
+
+      {/* ── Confetti overlay ──────────────────────────────────────────────── */}
+      <Confetti active={confetti} />
+
+      {/* ── Daily treasure reward modal ──────────────────────────────────── */}
+      <Modal
+        visible={!!showRewardModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRewardModal(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRewardModal(null)}
+        >
+          {showRewardModal && (
+            <Animated.View
+              style={[styles.rewardSheet, {
+                backgroundColor: presetValues.cardBg,
+                transform: [{ scale: rewardScale }],
+              }]}
+            >
+              <Text style={styles.rewardEmoji}>{showRewardModal.emoji}</Text>
+              <Text style={[styles.rewardTitle, { color: presetValues.text }]}>
+                You earned a {showRewardModal.rarity} reward!
+              </Text>
+              <View style={[styles.rewardXPBadge, { backgroundColor: RARITY_COLORS[showRewardModal.rarity] }]}>
+                <Text style={styles.rewardXPText}>+{showRewardModal.xp} XP</Text>
+              </View>
+              <Text style={[styles.rewardSub, { color: presetValues.textSecondary }]}>
+                Come back tomorrow for another treasure!
+              </Text>
+              <TouchableOpacity
+                style={[styles.modalClose, { backgroundColor: accentColor, marginTop: 20 }]}
+                onPress={() => setShowRewardModal(null)}
+              >
+                <Text style={[styles.modalCloseText, { fontSize: fontSizes.base }]}>Awesome!</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Achievement detail modal ──────────────────────────────────────── */}
       <Modal
         visible={!!selectedAch}
@@ -660,7 +883,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   // Hero
-  hero: { paddingTop: 40, paddingBottom: 28, paddingHorizontal: 20, alignItems: 'center', gap: 12 },
+  hero: { paddingTop: 40, paddingBottom: 28, paddingHorizontal: 20, alignItems: 'center', gap: 12, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
+  heroBlob: { position: 'absolute', borderRadius: 999 },
   heroTitle: { color: '#fff', fontWeight: '800', marginTop: 8 },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
   xpBarWrap: { width: '100%', marginTop: 4 },
@@ -684,6 +908,53 @@ const styles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   sectionTitle: { fontWeight: '700' },
   sectionSub: { fontWeight: '500', marginBottom: 14 },
+
+  // Star catch mini-game card
+  minigameCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 18, padding: 14, borderWidth: 2,
+    shadowColor: '#000', shadowOpacity: 0.10, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  },
+  minigameIconBox: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  minigameTitle: { fontWeight: '900' },
+  minigameSub: { fontWeight: '500', marginTop: 2 },
+  minigameBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 10, marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  minigameBadgeText: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 0.6 },
+
+  // Daily treasure
+  treasureCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 18, padding: 16, borderWidth: 2,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
+  },
+  treasureBubble: {
+    width: 68, height: 68, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  treasureTitle: { fontWeight: '800' },
+  treasureSub: { fontWeight: '500', marginTop: 2 },
+  treasureCta: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 10, marginTop: 6,
+  },
+  treasureCtaText: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.6 },
+
+  // Reward modal
+  rewardSheet: {
+    margin: 24, padding: 28, borderRadius: 24, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10,
+  },
+  rewardEmoji: { fontSize: 88, marginBottom: 8 },
+  rewardTitle: { fontWeight: '800', fontSize: 20, textAlign: 'center', marginBottom: 12 },
+  rewardXPBadge: { borderRadius: 14, paddingHorizontal: 18, paddingVertical: 8, marginBottom: 14 },
+  rewardXPText: { color: '#fff', fontWeight: '900', fontSize: 22, letterSpacing: 1 },
+  rewardSub: { fontSize: 13, textAlign: 'center', fontWeight: '500' },
 
   // Quests
   questDonePill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },

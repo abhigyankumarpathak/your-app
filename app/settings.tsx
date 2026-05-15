@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert, AppState, DeviceEventEmitter, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
+import { Alert, AppState, DeviceEventEmitter, Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Avatar from '../components/Avatar';
+import ColorWheel from '../components/ColorWheel';
+import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
 import { cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
-import { checkCalendarPermission, requestCalendarPermission } from '../services/permissions';
+import { checkCalendarPermission, checkMediaLibraryPermission, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];
@@ -32,10 +34,17 @@ const DEFAULT_PROFILE: UserProfile = {
 
 export default function Settings() {
   const {
-    colorName, setTheme, preset, setPreset,
+    colorName, setTheme, accentColor, customColor, setCustomColor,
+    preset, setPreset,
     fontSize, setFontSize, enableAnimations, toggleAnimations,
     presetValues, fontSizes,
+    avatar, setAvatar, avatarBg, setAvatarBg,
+    avatarImage, setAvatarImage,
   } = useTheme();
+
+  const [showColorWheel, setShowColorWheel] = useState(false);
+  const [pendingHex, setPendingHex] = useState(accentColor);
+  const [mediaPermission, setMediaPermission] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -54,9 +63,11 @@ export default function Settings() {
   useEffect(() => {
     loadProfile();
     loadNotifSettings();
+    checkMediaLibraryPermission().then(setMediaPermission);
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         checkCalendarPermission().then(setCalendarPermission);
+        checkMediaLibraryPermission().then(setMediaPermission);
         hasNotificationPermission().then(granted => {
           setNotifPermission(granted);
           if (granted) AsyncStorage.setItem('focusNotifPermission', 'true');
@@ -167,8 +178,11 @@ export default function Settings() {
               await AsyncStorage.multiRemove([
                 'focusOnboardingComplete', 'focusUserProfile', 'focusSessions',
                 'focusTasks', 'focusActivities', 'focusWellness', 'focusGoals',
-                'focusThemeColor', 'focusThemePreset', 'focusFontSize', 'focusEnableAnimations',
+                'focusThemeColor', 'focusCustomColor', 'focusThemePreset',
+                'focusFontSize', 'focusEnableAnimations',
+                'focusAvatar', 'focusAvatarBg', 'focusAvatarImage',
                 'focusStreak', 'focusXP', 'focusAchievements', 'focusPomodoroEnabled',
+                'focusDailyTreasure', 'focusDailyQuests',
                 'focusNotifPermission', 'focusStudyReminderOn', 'focusStudyReminderTime',
                 'focusBedtimeReminderOn', 'focusBedtimeReminderTime', 'focusStreakReminderOn',
               ]);
@@ -182,6 +196,14 @@ export default function Settings() {
     );
   };
 
+  const handlePickPhoto = async () => {
+    const uri = await pickAvatarImage();
+    if (uri) {
+      await setAvatarImage(uri);
+      setMediaPermission(true);
+    }
+  };
+
   const toggleFocusArea = (f: string) => {
     setProfile((p) => ({
       ...p,
@@ -191,13 +213,18 @@ export default function Settings() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: '#EC4899' }]}>
-        <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
-          ⚙️ Customization
-        </Text>
-        <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
-          Make Focus yours
-        </Text>
+      <View style={[styles.header, { backgroundColor: accentColor }]}>
+        <View style={styles.headerInner}>
+          <Avatar size={64} borderColor="rgba(255,255,255,0.6)" borderWidth={3} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
+              {profile.name ? `Hey, ${profile.name}!` : 'Customize'}
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
+              Make Focus truly yours
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -247,7 +274,7 @@ export default function Settings() {
                 style={[
                   styles.chip,
                   { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor },
-                  profile.grade === g && { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+                  profile.grade === g && { backgroundColor: accentColor, borderColor: accentColor },
                 ]}
                 onPress={() => setProfile((p) => ({ ...p, grade: g }))}
               >
@@ -271,7 +298,7 @@ export default function Settings() {
                 style={[
                   styles.chip,
                   { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor },
-                  profile.subjects.includes(s) && { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+                  profile.subjects.includes(s) && { backgroundColor: accentColor, borderColor: accentColor },
                 ]}
                 onPress={() => toggleSubject(s)}
               >
@@ -296,7 +323,7 @@ export default function Settings() {
                   styles.chip,
                   styles.chipWide,
                   { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor },
-                  profile.focusAreas.includes(f.label) && { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+                  profile.focusAreas.includes(f.label) && { backgroundColor: accentColor, borderColor: accentColor },
                 ]}
                 onPress={() => toggleFocusArea(f.label)}
               >
@@ -322,7 +349,7 @@ export default function Settings() {
                 style={[
                   styles.chip,
                   { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor },
-                  profile.studyGoalHours === h && { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+                  profile.studyGoalHours === h && { backgroundColor: accentColor, borderColor: accentColor },
                 ]}
                 onPress={() => setProfile((p) => ({ ...p, studyGoalHours: h }))}
               >
@@ -339,13 +366,118 @@ export default function Settings() {
 
           {/* Save Button */}
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: profileSaved ? '#10B981' : '#6366F1' }]}
+            style={[styles.saveBtn, { backgroundColor: profileSaved ? '#10B981' : accentColor }]}
             onPress={saveProfile}
           >
             <Text style={[styles.saveBtnText, { fontSize: fontSizes.base }]}>
               {profileSaved ? '✅ Saved!' : '💾 Save Profile'}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* ── Avatar ────────────────────────────────────────────────── */}
+        <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+            🪄 Your Avatar
+          </Text>
+          <Text style={[styles.sectionSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+            Pick your character. Tap a color to change the background.
+          </Text>
+
+          <View style={styles.avatarPreviewRow}>
+            <View style={[styles.avatarPreviewWrap, { borderColor: accentColor }]}>
+              {avatarImage ? (
+                <Image source={{ uri: avatarImage }} style={styles.avatarPreviewImg} />
+              ) : (
+                <View style={[styles.avatarPreviewEmoji, { backgroundColor: avatarBg }]}>
+                  <Text style={{ fontSize: 56 }}>{avatar}</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ flex: 1, paddingLeft: 12 }}>
+              <Text style={[{ color: presetValues.text, fontSize: fontSizes.title, fontWeight: '800' }]}>
+                {profile.name || 'You'}
+              </Text>
+              <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1, marginTop: 4 }]}>
+                {profile.grade ? `${profile.grade} grade` : 'Make it yours'}
+              </Text>
+              {!avatarImage && (
+                <View style={styles.avatarBgRow}>
+                  {Object.values(THEME_COLORS).slice(0, 8).map((hex) => (
+                    <TouchableOpacity
+                      key={hex}
+                      onPress={() => setAvatarBg(hex)}
+                      style={[
+                        styles.avatarBgDot,
+                        { backgroundColor: hex, borderWidth: avatarBg === hex ? 3 : 0, borderColor: '#fff' },
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Photo / emoji toggle row */}
+          <View style={styles.photoBtnRow}>
+            <TouchableOpacity
+              onPress={handlePickPhoto}
+              style={[styles.photoBtn, {
+                backgroundColor: avatarImage ? accentColor : accentColor + '18',
+                borderColor: accentColor,
+              }]}
+            >
+              <Text style={{ fontSize: 18 }}>📷</Text>
+              <Text style={[styles.photoBtnText, { color: avatarImage ? '#fff' : accentColor, fontSize: fontSizes.base }]}>
+                {avatarImage ? 'Change Photo' : 'Use Camera Roll Photo'}
+              </Text>
+            </TouchableOpacity>
+            {avatarImage && (
+              <TouchableOpacity
+                onPress={() => setAvatarImage(null)}
+                style={[styles.photoClearBtn, { borderColor: presetValues.borderColor }]}
+              >
+                <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1, fontWeight: '700' }]}>
+                  ✕ Remove
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {!mediaPermission && !avatarImage && (
+            <Text style={[styles.permHint, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+              You'll be asked to allow photo library access.
+            </Text>
+          )}
+
+          {/* Emoji grid (only shown when not using a photo) */}
+          {!avatarImage && (
+            <>
+              <Text style={[styles.orDivider, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                OR PICK AN EMOJI
+              </Text>
+              <View style={styles.avatarGrid}>
+                {AVATAR_OPTIONS.map((emoji) => {
+                  const selected = avatar === emoji;
+                  return (
+                    <TouchableOpacity
+                      key={emoji}
+                      onPress={() => setAvatar(emoji)}
+                      style={[
+                        styles.avatarBtn,
+                        {
+                          backgroundColor: selected ? accentColor + '22' : presetValues.bgSecondary,
+                          borderColor: selected ? accentColor : presetValues.borderColor,
+                          borderWidth: selected ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
         </View>
 
         {/* ── Theme Style ───────────────────────────────────────────── */}
@@ -367,7 +499,11 @@ export default function Settings() {
                 ]}
                 onPress={() => setPreset(key)}
               >
-                <Text style={[styles.presetName, { color: (themeData as any).text, fontSize: fontSizes.base }]}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={[styles.presetName, { color: (themeData as any).text, fontSize: fontSizes.base }]}
+                >
                   {key}
                 </Text>
               </TouchableOpacity>
@@ -377,9 +513,16 @@ export default function Settings() {
 
         {/* ── Accent Color ──────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
-          <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
-            🎨 Accent Color
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title, marginBottom: 0 }]}>
+              🎨 Accent Color
+            </Text>
+            <View style={[styles.currentColorChip, { backgroundColor: accentColor }]} />
+          </View>
+          <Text style={[styles.sectionSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+            Pick a preset or open the color wheel for a custom hue.
           </Text>
+
           <View style={styles.colorGrid}>
             {Object.entries(THEME_COLORS).map(([name, hex]) => (
               <TouchableOpacity
@@ -387,29 +530,62 @@ export default function Settings() {
                 style={[
                   styles.colorBtn,
                   { backgroundColor: hex },
-                  colorName === name && styles.selected,
+                  !customColor && colorName === name && styles.selected,
                 ]}
                 onPress={() => setTheme(name)}
               >
-                {colorName === name && <Text style={styles.check}>✓</Text>}
+                {!customColor && colorName === name && <Text style={styles.check}>✓</Text>}
               </TouchableOpacity>
             ))}
           </View>
-          <View style={styles.labelRow}>
-            {Object.keys(THEME_COLORS).map(name => (
-              <Text
-                key={name}
-                style={[
-                  styles.colorLabel,
-                  colorName === name && { color: presetValues.text, fontWeight: '700' },
-                  colorName !== name && { color: presetValues.textSecondary },
-                  { fontSize: fontSizes.base - 2 },
-                ]}
+
+          <TouchableOpacity
+            style={[styles.wheelToggle, {
+              backgroundColor: showColorWheel ? accentColor : presetValues.bgSecondary,
+              borderColor: accentColor,
+            }]}
+            onPress={() => {
+              setPendingHex(accentColor);
+              setShowColorWheel((v) => !v);
+            }}
+          >
+            <Text style={[styles.wheelToggleText, {
+              color: showColorWheel ? '#fff' : accentColor,
+              fontSize: fontSizes.base,
+            }]}>
+              {showColorWheel ? '✕ Close color wheel' : '🎯 Open custom color wheel'}
+            </Text>
+          </TouchableOpacity>
+
+          {showColorWheel && (
+            <View style={styles.wheelWrap}>
+              <ColorWheel size={240} value={pendingHex} onChange={setPendingHex} />
+              <TouchableOpacity
+                style={[styles.applyBtn, { backgroundColor: pendingHex }]}
+                onPress={() => {
+                  setCustomColor(pendingHex);
+                  setShowColorWheel(false);
+                }}
               >
-                {name}
+                <Text style={styles.applyBtnText}>✓ Apply this color</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {customColor && (
+            <View style={[styles.customRow, { borderColor: accentColor }]}>
+              <View style={[styles.customSwatch, { backgroundColor: customColor }]} />
+              <Text style={[{ color: presetValues.text, fontSize: fontSizes.base, fontWeight: '700', flex: 1 }]}>
+                Custom: {customColor}
               </Text>
-            ))}
-          </View>
+              <TouchableOpacity
+                style={[styles.clearCustomBtn, { borderColor: presetValues.borderColor }]}
+                onPress={() => setCustomColor(null)}
+              >
+                <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* ── Font Size ─────────────────────────────────────────────── */}
@@ -483,6 +659,24 @@ export default function Settings() {
             >
               <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: calendarPermission ? '#10B981' : '#6366F1' }]}>
                 {calendarPermission ? '✓ Granted' : 'Allow'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
+
+          {/* Photo library permission row */}
+          <View style={styles.notifRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>📷 Photo Library</Text>
+              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>For custom profile pictures</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.permStatusBtn, { backgroundColor: mediaPermission ? '#10B98120' : accentColor + '20', borderColor: mediaPermission ? '#10B981' : accentColor }]}
+              onPress={async () => { const g = await requestMediaLibraryPermission(); setMediaPermission(g); }}
+            >
+              <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: mediaPermission ? '#10B981' : accentColor }]}>
+                {mediaPermission ? '✓ Granted' : 'Allow'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -595,9 +789,64 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 40, paddingBottom: 30, paddingHorizontal: 20 },
-  headerTitle: { fontWeight: 'bold', marginBottom: 4 },
+  header: { paddingTop: 40, paddingBottom: 30, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerInner: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  headerAvatar: {
+    width: 64, height: 64, borderRadius: 32,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3,
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4,
+  },
+  headerTitle: { fontWeight: '800', marginBottom: 2 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  sectionSub: { fontWeight: '500', marginBottom: 12 },
+  currentColorChip: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3, elevation: 2 },
+
+  // Avatar
+  avatarPreviewRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  avatarPreviewWrap: {
+    width: 96, height: 96, borderRadius: 48,
+    borderWidth: 3,
+    overflow: 'hidden',
+  },
+  avatarPreviewEmoji: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarPreviewImg: { width: '100%', height: '100%' },
+  avatarBgRow: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
+  avatarBgDot: { width: 22, height: 22, borderRadius: 11 },
+  avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' },
+  avatarBtn: {
+    width: 52, height: 52, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  photoBtnRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  photoBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 12, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 14,
+  },
+  photoBtnText: { fontWeight: '800' },
+  photoClearBtn: {
+    paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  permHint: { fontWeight: '500', marginTop: 6, marginBottom: 4 },
+  orDivider: { textAlign: 'center', fontWeight: '700', letterSpacing: 1, marginVertical: 14 },
+
+  // Color wheel
+  wheelToggle: { borderRadius: 12, borderWidth: 1.5, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
+  wheelToggleText: { fontWeight: '700' },
+  wheelWrap: { alignItems: 'center', marginTop: 18 },
+  applyBtn: { marginTop: 14, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 },
+  applyBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  customRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 14, padding: 10, borderRadius: 12, borderWidth: 1.5,
+  },
+  customSwatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: '#fff' },
+  clearCustomBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+
   content: { paddingHorizontal: 16, paddingBottom: 40 },
   section: { borderRadius: 14, padding: 16, marginTop: 16 },
   sectionTitle: { fontWeight: '600', marginBottom: 14 },
@@ -625,9 +874,9 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#fff', fontWeight: '700' },
 
   // Theme / color
-  presetGrid: { flexDirection: 'row', gap: 10 },
-  presetBtn: { flex: 1, borderRadius: 10, padding: 12, alignItems: 'center', justifyContent: 'center' },
-  presetName: { fontWeight: '600' },
+  presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  presetBtn: { width: '31%', borderRadius: 10, paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
+  presetName: { fontWeight: '700' },
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
   colorBtn: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   selected: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 },

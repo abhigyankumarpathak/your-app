@@ -67,6 +67,61 @@ export const xpForNextLevel = (xp: number) => {
   return (level + 1) * 100 - xp;
 };
 
+// ── Daily Treasure: a once-per-day bonus XP chest. Adds an element of surprise. ─
+export interface DailyTreasure {
+  date: string;     // YYYY-MM-DD that this was claimed (empty if not claimed yet)
+  xp: number;       // how much XP it gave
+  emoji: string;    // visual reward
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+}
+
+const TREASURE_REWARDS = [
+  { emoji: '🪙', xp: 10,  rarity: 'common'    as const, weight: 50 },
+  { emoji: '💰', xp: 20,  rarity: 'common'    as const, weight: 25 },
+  { emoji: '💎', xp: 40,  rarity: 'rare'      as const, weight: 15 },
+  { emoji: '🏆', xp: 75,  rarity: 'epic'      as const, weight: 7  },
+  { emoji: '👑', xp: 150, rarity: 'legendary' as const, weight: 3  },
+];
+
+export const todayDateKey = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+
+export const loadTreasureState = async (): Promise<DailyTreasure | null> => {
+  try {
+    const raw = await AsyncStorage.getItem('focusDailyTreasure');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const isTreasureAvailableToday = async (): Promise<boolean> => {
+  const state = await loadTreasureState();
+  return !state || state.date !== todayDateKey();
+};
+
+export const claimDailyTreasure = async (): Promise<DailyTreasure> => {
+  const totalWeight = TREASURE_REWARDS.reduce((s, r) => s + r.weight, 0);
+  let roll = Math.random() * totalWeight;
+  let reward = TREASURE_REWARDS[0];
+  for (const r of TREASURE_REWARDS) {
+    roll -= r.weight;
+    if (roll <= 0) { reward = r; break; }
+  }
+  const treasure: DailyTreasure = {
+    date: todayDateKey(),
+    xp: reward.xp,
+    emoji: reward.emoji,
+    rarity: reward.rarity,
+  };
+  await AsyncStorage.setItem('focusDailyTreasure', JSON.stringify(treasure));
+  const currentXP = await loadXP();
+  await AsyncStorage.setItem('focusXP', String(currentXP + reward.xp));
+  return treasure;
+};
+
 export const loadStreakData = async (): Promise<StreakData> => {
   try {
     const raw = await AsyncStorage.getItem('focusStreak');
