@@ -509,8 +509,9 @@ export default function GameScreen() {
 
         {/* ── Star Catch mini-game ──────────────────────────────────────── */}
         <TouchableOpacity
-          activeOpacity={0.85}
+          activeOpacity={starGamePlayedToday ? 1 : 0.85}
           onPress={() => setShowStarGame(true)}
+          disabled={starGamePlayedToday}
           style={[styles.minigameCard, {
             backgroundColor: starGamePlayedToday ? presetValues.cardBg : accentColor,
             borderColor: accentColor,
