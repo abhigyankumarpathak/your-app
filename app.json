@@ -13,9 +13,10 @@
       "infoPlist": {
         "NSHealthShareUsageDescription": "This app needs access to your health data to track sleep and screen time",
         "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information",
-        "NSPhotoLibraryUsageDescription": "Focus uses your photo library so you can pick a custom profile picture."
+        "NSPhotoLibraryUsageDescription": "Focus uses your photo library so you can pick a custom profile picture.",
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.anonymous.focus"
+      "bundleIdentifier": "com.amitpathak.focus"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,22 +28,11 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.QUERY_ALL_PACKAGES",
         "android.permission.PACKAGE_USAGE_STATS",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
-        "android.permission.QUERY_ALL_PACKAGES",
-        "android.permission.PACKAGE_USAGE_STATS",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.anonymous.focus"
+      "package": "com.amitpathak.focus"
     },
     "web": {
       "output": "static",
@@ -83,6 +73,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "199e01cd-0234-4a63-b3c6-1a7b5c88287e"
+      }
     }
   }
 }

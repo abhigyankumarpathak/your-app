@@ -35,6 +35,66 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+## Cross-device sync (Supabase)
+
+Login and cross-device progress sync are powered by [Supabase](https://supabase.com). The app works fine without it — sign-in just stays disabled until you wire it up.
+
+### 1. Create a Supabase project
+
+Sign in at [supabase.com](https://supabase.com), create a new project, and grab two values from **Project Settings → API**:
+
+- Project URL
+- `anon` public key
+
+### 2. Add env vars
+
+Create a `.env` file in the project root (do **not** commit it):
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Expo loads any var prefixed with `EXPO_PUBLIC_` into the JS bundle. Restart `npx expo start` after editing `.env`.
+
+### 3. Create the progress table
+
+In the Supabase SQL editor, run:
+
+```sql
+create table if not exists public.progress (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.progress enable row level security;
+
+create policy "Users read their own progress"
+  on public.progress for select
+  using (auth.uid() = user_id);
+
+create policy "Users insert their own progress"
+  on public.progress for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users update their own progress"
+  on public.progress for update
+  using (auth.uid() = user_id);
+```
+
+### 4. (Optional) Disable email confirmations during development
+
+In **Authentication → Providers → Email**, turn off "Confirm email" if you want sign-up to log you in immediately. Re-enable it before shipping.
+
+### How sync works
+
+- The app persists progress to `AsyncStorage` exactly as before, so it always works offline.
+- All synced keys (profile, sessions, tasks, goals, wellness, theme, avatar, streak, XP, achievements, quests, onboarding) are bundled into one JSON document per user.
+- The first time you sign in on a device, the cloud row is pulled if it exists; otherwise the device's local progress is uploaded.
+- "☁️ Sync Now" in Settings pushes the current local state on demand. Signing out also pushes first so nothing is lost.
+- Conflict resolution is last-write-wins on the whole blob — fine for a single-user app on a handful of devices, easy to upgrade to per-table sync later.
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:

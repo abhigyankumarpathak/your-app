@@ -1,11 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, AppState, DeviceEventEmitter, Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, DeviceEventEmitter, Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Avatar from '../components/Avatar';
 import ColorWheel from '../components/ColorWheel';
+import { useAuth } from '../context/AuthContext';
 import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
 import { cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
+import { getLastSyncedAt } from '../services/sync';
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];
@@ -33,6 +36,8 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 export default function Settings() {
+  const router = useRouter();
+  const { user, signOut, syncNow } = useAuth();
   const {
     colorName, setTheme, accentColor, customColor, setCustomColor,
     preset, setPreset,
@@ -41,6 +46,46 @@ export default function Settings() {
     avatar, setAvatar, avatarBg, setAvatarBg,
     avatarImage, setAvatarImage,
   } = useTheme();
+
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLastSyncedAt().then(setLastSyncedAt);
+  }, [user?.id]);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    try {
+      const result = await syncNow();
+      if (!result.ok) {
+        Alert.alert('Sync failed', result.error ?? 'Unknown error');
+      } else {
+        const ts = await getLastSyncedAt();
+        setLastSyncedAt(ts);
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign out?',
+      'Your latest progress will be saved to the cloud before signing out. The data on this device will stay so you can keep using the app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ]
+    );
+  };
+
+  const formatSyncTime = (iso: string | null) => {
+    if (!iso) return 'Not synced yet';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return 'Not synced yet';
+    return `Last synced ${d.toLocaleString()}`;
+  };
 
   const [showColorWheel, setShowColorWheel] = useState(false);
   const [pendingHex, setPendingHex] = useState(accentColor);
@@ -228,6 +273,64 @@ export default function Settings() {
       </View>
 
       <View style={styles.content}>
+
+        {/* ── Account ──────────────────────────────────────────────── */}
+        <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+            ☁️ Account & Sync
+          </Text>
+          {user ? (
+            <>
+              <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>
+                Signed in as
+              </Text>
+              <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base, marginBottom: 4 }]}>
+                {user.email}
+              </Text>
+              <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 2, marginBottom: 14 }]}>
+                {formatSyncTime(lastSyncedAt)}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: accentColor, flex: 1, opacity: syncing ? 0.7 : 1 }]}
+                  onPress={handleSyncNow}
+                  disabled={syncing}
+                >
+                  {syncing
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={[styles.saveBtnText, { fontSize: fontSizes.base }]}>☁️ Sync Now</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, {
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    borderColor: presetValues.borderColor,
+                    paddingHorizontal: 18,
+                  }]}
+                  onPress={handleSignOut}
+                >
+                  <Text style={[styles.saveBtnText, { color: presetValues.text, fontSize: fontSizes.base }]}>
+                    Sign Out
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1, marginBottom: 14, lineHeight: 20 }]}>
+                Sign in to save your progress and pick up where you left off on any device.
+              </Text>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: accentColor }]}
+                onPress={() => router.push('/login')}
+              >
+                <Text style={[styles.saveBtnText, { fontSize: fontSizes.base }]}>
+                  🔐 Sign In / Create Account
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {/* ── Your Profile ─────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>

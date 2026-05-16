@@ -5,6 +5,7 @@ import { Drawer } from 'expo-router/drawer';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, DeviceEventEmitter, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import Onboarding from './onboarding';
 
@@ -73,6 +74,14 @@ function DrawerLayout() {
           headerShown: false,
         }}
       />
+      {/* Login is reached from Settings — hidden from the drawer nav */}
+      <Drawer.Screen
+        name="login"
+        options={{
+          drawerItemStyle: { display: 'none' },
+          headerShown: false,
+        }}
+      />
     </Drawer>
   );
 }
@@ -112,11 +121,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        {!onboardingDone ? (
-          <Onboarding onComplete={() => setOnboardingDone(true)} />
-        ) : (
-          <DrawerLayout />
-        )}
+        <AuthProvider>
+          {!onboardingDone ? (
+            <Onboarding onComplete={() => setOnboardingDone(true)} />
+          ) : (
+            <DrawerLayout />
+          )}
+        </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
