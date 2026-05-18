@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { notify } from '../services/dialog';
+import { getLastNightSleepHours, isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
 
 export default function Wellness() {
   const { accentColor, presetValues, fontSizes } = useTheme();
@@ -75,6 +77,34 @@ export default function Wellness() {
       setMood('');
     } catch (error) {
       console.log('Error saving log:', error);
+    }
+  };
+
+  const [syncingHealth, setSyncingHealth] = useState(false);
+
+  const handleSyncFromHealth = async () => {
+    if (!isHealthAvailable()) {
+      notify('Not available', 'Apple Health sync only works on iOS.');
+      return;
+    }
+    if (!isHealthDataAvailable()) {
+      notify('Health not enabled', 'Open the Health app on this device first, then try again.');
+      return;
+    }
+    setSyncingHealth(true);
+    try {
+      await requestHealthPermissions();
+      const hours = await getLastNightSleepHours();
+      if (hours == null) {
+        notify(
+          'No sleep data',
+          "Couldn't find a recent sleep session in Apple Health. Wear your watch overnight or log it in the Health app, then try again."
+        );
+        return;
+      }
+      setSleepDuration(String(hours));
+    } finally {
+      setSyncingHealth(false);
     }
   };
 
@@ -167,6 +197,27 @@ export default function Wellness() {
           <Text style={[styles.formTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
             📋 Log Today
           </Text>
+
+          {isHealthAvailable() && (
+            <TouchableOpacity
+              onPress={handleSyncFromHealth}
+              disabled={syncingHealth}
+              style={[styles.healthSyncBtn, {
+                backgroundColor: accentColor + '18',
+                borderColor: accentColor,
+                opacity: syncingHealth ? 0.7 : 1,
+              }]}
+            >
+              {syncingHealth ? (
+                <ActivityIndicator size="small" color={accentColor} />
+              ) : (
+                <Text style={{ fontSize: 18 }}>❤️</Text>
+              )}
+              <Text style={[styles.healthSyncBtnText, { color: accentColor, fontSize: fontSizes.base }]}>
+                {syncingHealth ? 'Reading from Apple Health…' : 'Auto-fill sleep from Apple Health'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <Text style={[styles.label, { color: presetValues.text, fontSize: fontSizes.base }]}>
             😴 Bedtime last night
@@ -348,6 +399,13 @@ const styles = StyleSheet.create({
   statLabel: { fontWeight: '500' },
   form: { borderRadius: 14, padding: 16, marginTop: 20, borderWidth: 1 },
   formTitle: { fontWeight: '600', marginBottom: 16 },
+  healthSyncBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1.5,
+    marginBottom: 18,
+  },
+  healthSyncBtnText: { fontWeight: '700' },
   label: { fontWeight: '500', marginBottom: 6 },
   input: { borderRadius: 8, padding: 12, marginBottom: 14, borderWidth: 1 },
   moodSelector: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 14 },

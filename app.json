@@ -41,6 +41,13 @@
     "plugins": [
       "expo-router",
       [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Focus reads your sleep, step, and activity data so you don't have to enter it manually.",
+          "NSHealthUpdateUsageDescription": "Focus can save mindful-minute sessions back to Apple Health when you complete a study block."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/app.png",

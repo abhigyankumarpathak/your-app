@@ -126,6 +126,25 @@ export default function ScreenTime() {
       </View>
 
       <View style={styles.content}>
+        {Platform.OS === 'ios' && (
+          <View style={[styles.iosNotice, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
+            <Text style={[styles.iosNoticeTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
+              ⚠️ Why isn't this automatic?
+            </Text>
+            <Text style={[styles.iosNoticeText, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+              Apple restricts Screen Time data to its own app and a handful of approved parental-control apps (via the Family Controls entitlement). For now, tap the button below to peek at your real Screen Time, then enter the total here.
+            </Text>
+            <TouchableOpacity
+              style={[styles.iosNoticeBtn, { borderColor: accentColor }]}
+              onPress={openDeviceScreenTime}
+            >
+              <Text style={[styles.iosNoticeBtnText, { color: accentColor, fontSize: fontSizes.base - 1 }]}>
+                Open iOS Screen Time
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Stats row */}
         <View style={styles.statsRow}>
           {[
@@ -236,6 +255,11 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1 },
   statValue: { fontWeight: '700', marginBottom: 4 },
   statLabel: { fontWeight: '500', textAlign: 'center' },
+  iosNotice: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  iosNoticeTitle: { fontWeight: '700', marginBottom: 6 },
+  iosNoticeText: { lineHeight: 19, marginBottom: 10 },
+  iosNoticeBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, alignSelf: 'flex-start' },
+  iosNoticeBtnText: { fontWeight: '700' },
   statusBadge: { borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, alignItems: 'center' },
   statusText: { fontWeight: '600' },
   card: { borderRadius: 14, padding: 16, marginTop: 16, borderWidth: 1 },
