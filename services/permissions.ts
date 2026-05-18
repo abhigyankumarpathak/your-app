@@ -3,10 +3,13 @@ import * as Calendar from 'expo-calendar';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Alert, Linking, Platform } from 'react-native';
 
-// expo-image-picker is a native module. requireOptionalNativeModule returns
-// null instead of throwing when the native side isn't registered (e.g. the dev
-// client was built before this package was added).
-const _nativeImagePickerAvailable: boolean = !!requireOptionalNativeModule('ExponentImagePicker');
+// expo-image-picker is a native module on iOS/Android. On web it uses a
+// browser file-input and has no native module to register, so we always treat
+// it as available on web. requireOptionalNativeModule returns null instead of
+// throwing when the native side isn't registered (e.g. the dev client was
+// built before this package was added).
+const _nativeImagePickerAvailable: boolean =
+  Platform.OS === 'web' ? true : !!requireOptionalNativeModule('ExponentImagePicker');
 
 let _ImagePicker: typeof import('expo-image-picker') | null = null;
 function getImagePicker(): typeof import('expo-image-picker') | null {
@@ -36,7 +39,10 @@ export const PERMISSION_TYPES = {
 
 const isCalendarGranted = (status: string) => status === 'granted' || status === 'limited';
 
+export const isCalendarAvailable = (): boolean => Platform.OS !== 'web';
+
 export const requestCalendarPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'web') return false;
   try {
     const current = await Calendar.getCalendarPermissionsAsync();
     if (isCalendarGranted(current.status)) return true;
@@ -53,6 +59,7 @@ export const requestCalendarPermission = async (): Promise<boolean> => {
 };
 
 export const checkCalendarPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'web') return false;
   try {
     const { status } = await Calendar.getCalendarPermissionsAsync();
     return isCalendarGranted(status);

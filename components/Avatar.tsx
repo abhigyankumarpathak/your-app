@@ -1,4 +1,4 @@
-import { Image, Text, View } from 'react-native';
+import { Image, Platform, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 interface Props {
@@ -7,11 +7,19 @@ interface Props {
   borderWidth?: number;
 }
 
+/** A native file URI (file://, content://, ph://) only loads on the device
+ *  that owns the file — it's unusable on web. Treat those as "no photo". */
+const isLoadableHere = (uri: string | null): uri is string => {
+  if (!uri) return false;
+  if (Platform.OS !== 'web') return true;
+  return /^(https?:|data:|blob:)/i.test(uri);
+};
+
 /** Renders the user's photo avatar if set, otherwise the emoji avatar with bg color. */
 export default function Avatar({ size, borderColor = 'rgba(255,255,255,0.7)', borderWidth = 3 }: Props) {
   const { avatar, avatarBg, avatarImage } = useTheme();
 
-  if (avatarImage) {
+  if (isLoadableHere(avatarImage)) {
     return (
       <View
         style={{

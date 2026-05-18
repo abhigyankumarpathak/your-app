@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Drawer } from 'expo-router/drawer';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, DeviceEventEmitter, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AppStateProvider, useAppState } from '../context/AppStateContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import Onboarding from './onboarding';
 
@@ -86,12 +88,42 @@ function DrawerLayout() {
   );
 }
 
+function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boolean; setOnboardingDone: (v: boolean) => void }) {
+  const { session, loading } = useAuth();
+
+  useEffect(() => {
+    // Wait until the SDK has finished restoring the session from storage —
+    // otherwise the initial `session === null` from useState fires this
+    // redirect on every web reload before getSession() can resolve.
+    if (loading) return;
+    if (!onboardingDone) return;
+    if (session === null) {
+      router.replace('/login');
+    }
+  }, [session, onboardingDone, loading]);
+
+  if (!onboardingDone) {
+    return <Onboarding onComplete={() => setOnboardingDone(true)} />;
+  }
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  }
+
+  return <DrawerLayout />;
+}
+
 export default function RootLayout() {
-  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     AsyncStorage.getItem('focusOnboardingComplete').then((val) => {
-      setOnboardingDone(val === 'true');
+      // onboarding state will be managed via context
+      setInitializing(false);
     });
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
@@ -103,14 +135,7 @@ export default function RootLayout() {
     }
   }, []);
 
-  useEffect(() => {
-    const sub = DeviceEventEmitter.addListener('RESET_APP', () => {
-      setOnboardingDone(false);
-    });
-    return () => sub.remove();
-  }, []);
-
-  if (onboardingDone === null) {
+  if (initializing) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
         <ActivityIndicator size="large" color="#6366F1" />
@@ -122,13 +147,42 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AuthProvider>
-          {!onboardingDone ? (
-            <Onboarding onComplete={() => setOnboardingDone(true)} />
-          ) : (
-            <DrawerLayout />
-          )}
+          <AppStateProvider>
+            <RootContent />
+          </AppStateProvider>
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function RootContent() {
+  const { onboardingDone, setOnboardingDone, triggerReset } = useAppState();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('focusOnboardingComplete').then((val) => {
+      setOnboardingDone(val === 'true');
+      setInitialized(true);
+    });
+  }, [setOnboardingDone]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('RESET_APP', () => {
+      triggerReset();
+    });
+    return () => sub.remove();
+  }, [triggerReset]);
+
+  if (!initialized) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  }
+
+  return (
+    <AppContent onboardingDone={onboardingDone} setOnboardingDone={setOnboardingDone} />
   );
 }

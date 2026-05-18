@@ -2,6 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
 
+/** Scheduled local notifications are native-only — expo-notifications can't
+ *  schedule daily triggers in a browser. */
+export const areNotificationsAvailable = (): boolean => Platform.OS !== 'web';
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     if (Platform.OS === 'web') return false;
@@ -27,6 +31,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 };
 
 export const hasNotificationPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'web') return false;
   try {
     const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';

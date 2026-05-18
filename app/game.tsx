@@ -453,8 +453,8 @@ export default function GameScreen() {
     ? ALL_ACHIEVEMENTS
     : ALL_ACHIEVEMENTS.filter(a => a.category === achCategory);
 
-  // Show current level ±3 neighbors, plus a few ahead
-  const pathLevels = Array.from({ length: 12 }, (_, i) => Math.max(0, level - 2) + i);
+  // Show all levels from 0 onwards (scrollable)
+  const pathLevels = Array.from({ length: Math.max(level + 5, 15) }, (_, i) => i);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]} showsVerticalScrollIndicator={false}>
@@ -648,13 +648,21 @@ export default function GameScreen() {
           </Text>
 
           {showPath && (
-            <LevelPathCanvas
-              pathLevels={pathLevels}
-              currentLevel={level}
-              accentColor={accentColor}
-              presetValues={presetValues}
-              fontSizes={fontSizes}
-            />
+            <ScrollView
+              horizontal={false}
+              scrollEnabled
+              showsVerticalScrollIndicator={true}
+              scrollIndicatorInsets={{ right: 1 }}
+              style={{ maxHeight: 400, borderRadius: 12, overflow: 'hidden' }}
+            >
+              <LevelPathCanvas
+                pathLevels={pathLevels}
+                currentLevel={level}
+                accentColor={accentColor}
+                presetValues={presetValues}
+                fontSizes={fontSizes}
+              />
+            </ScrollView>
           )}
         </View>
 

@@ -1,7 +1,12 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { getSupabase } from '../services/supabase';
-import { onSignedInSync, pushLocalToCloud } from '../services/sync';
+import { onSignedInSync, pullCloudToLocal, pushLocalToCloud } from '../services/sync';
+
+/** Fired after a successful cloud pull so contexts that cache AsyncStorage
+ *  values (theme, profile, …) know to reload themselves. */
+export const CLOUD_PULLED_EVENT = 'CLOUD_PULLED';
 
 interface AuthContextValue {
   user: User | null;
@@ -11,6 +16,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
+  pullNow: () => Promise<{ ok: boolean; hasData: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -26,16 +32,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    client.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    // Mirror whatever the SDK reports. Don't proactively clear sessions —
+    // the SDK fires SIGNED_OUT itself if a refresh genuinely fails, and any
+    // "Invalid Refresh Token" message in dev is non-fatal noise from that
+    // recovery path.
+    client.auth.getSession()
+      .then(({ data }) => {
+        if (mounted) setSession(data.session);
+      })
+      .catch(() => {
+        if (mounted) setSession(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     const { data: sub } = client.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
+      if (mounted) setSession(newSession);
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signIn: AuthContextValue['signIn'] = async (email, password) => {
@@ -65,14 +86,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!client) return;
     // Push any unsaved local changes before tearing down the session.
     await pushLocalToCloud().catch(() => undefined);
+    // Sign out from Supabase (clears session from storage)
     await client.auth.signOut();
+    // Force clear the session state immediately
+    setSession(null);
   };
 
   const syncNow: AuthContextValue['syncNow'] = async () => pushLocalToCloud();
 
+  const pullNow: AuthContextValue['pullNow'] = async () => {
+    const result = await pullCloudToLocal();
+    if (result.ok && result.hasData) {
+      // Notify caches (theme, profile, …) to re-read AsyncStorage.
+      DeviceEventEmitter.emit(CLOUD_PULLED_EVENT);
+    }
+    return result;
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, syncNow }}
+      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, syncNow, pullNow }}
     >
       {children}
     </AuthContext.Provider>

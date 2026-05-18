@@ -57,6 +57,7 @@ export const getLevel = (xp: number) => Math.floor(xp / 100);
 export const LEVEL_TITLES = [
   'Rookie', 'Learner', 'Scholar', 'Achiever', 'Expert',
   'Master', 'Champion', 'Genius', 'Legend', 'Prodigy',
+  'Ascended', 'Immortal', 'Transcendent', 'Cosmic', 'Infinite',
 ];
 
 export const getLevelTitle = (xp: number): string =>

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 
 interface ThemeContextType {
   colorName: string;
@@ -101,8 +102,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [avatarBg, setAvatarBgState] = useState('#3B82F6');
   const [avatarImage, setAvatarImageState] = useState<string | null>(null);
 
-  useEffect(() => {
-    AsyncStorage.multiGet([
+  const loadFromStorage = async () => {
+    const values = await AsyncStorage.multiGet([
       'focusThemeColor',
       'focusCustomColor',
       'focusThemePreset',
@@ -111,17 +112,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       'focusAvatar',
       'focusAvatarBg',
       'focusAvatarImage',
-    ]).then((values) => {
-      const [color, custom, presetVal, fontSizeVal, animVal, av, avBg, avImg] = values;
-      if (color[1] && (THEME_COLORS as Record<string, string>)[color[1]]) setColorName(color[1]);
-      if (custom[1]) setCustomColorState(custom[1]);
-      if (presetVal[1] && (THEME_PRESETS as Record<string, any>)[presetVal[1]]) setPresetState(presetVal[1]);
-      if (fontSizeVal[1] && (FONT_SIZES as Record<string, any>)[fontSizeVal[1]]) setFontSizeState(fontSizeVal[1]);
-      if (animVal[1] !== null) setEnableAnimations(animVal[1] === 'true');
-      if (av[1]) setAvatarState(av[1]);
-      if (avBg[1]) setAvatarBgState(avBg[1]);
-      if (avImg[1]) setAvatarImageState(avImg[1]);
+    ]);
+    const [color, custom, presetVal, fontSizeVal, animVal, av, avBg, avImg] = values;
+    if (color[1] && (THEME_COLORS as Record<string, string>)[color[1]]) setColorName(color[1]);
+    if (custom[1]) setCustomColorState(custom[1]);
+    else setCustomColorState(null);
+    if (presetVal[1] && (THEME_PRESETS as Record<string, any>)[presetVal[1]]) setPresetState(presetVal[1]);
+    if (fontSizeVal[1] && (FONT_SIZES as Record<string, any>)[fontSizeVal[1]]) setFontSizeState(fontSizeVal[1]);
+    if (animVal[1] !== null) setEnableAnimations(animVal[1] === 'true');
+    if (av[1]) setAvatarState(av[1]);
+    if (avBg[1]) setAvatarBgState(avBg[1]);
+    setAvatarImageState(avImg[1] ?? null);
+  };
+
+  useEffect(() => {
+    loadFromStorage();
+    const sub = DeviceEventEmitter.addListener('CLOUD_PULLED', () => {
+      loadFromStorage();
     });
+    return () => sub.remove();
   }, []);
 
   const setTheme = async (name: string) => {
