@@ -3,7 +3,23 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { notify } from '../services/dialog';
-import { getLastNightSleepHours, isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
+import {
+  getExerciseMinutesToday,
+  getLastNightSleepHours,
+  getStepsToday,
+  getWorkoutsToday,
+  isHealthAvailable,
+  isHealthDataAvailable,
+  requestHealthPermissions,
+  type TodayWorkout,
+} from '../services/health';
+
+type TodayHealth = {
+  steps: number | null;
+  exerciseMinutes: number | null;
+  sleepHours: number | null;
+  workouts: TodayWorkout[];
+};
 
 export default function Wellness() {
   const { accentColor, presetValues, fontSizes } = useTheme();
@@ -64,6 +80,9 @@ export default function Wellness() {
       sleepDuration: parseFloat(sleepDuration),
       screenTime: parseFloat(screenTime),
       mood: mood || 'Normal',
+      ...(todayHealth?.steps != null && { steps: todayHealth.steps }),
+      ...(todayHealth?.exerciseMinutes != null && { exerciseMinutes: todayHealth.exerciseMinutes }),
+      ...(todayHealth?.workouts.length ? { workoutsCount: todayHealth.workouts.length } : {}),
     };
 
     const updated = [newLog, ...logs];
@@ -81,6 +100,7 @@ export default function Wellness() {
   };
 
   const [syncingHealth, setSyncingHealth] = useState(false);
+  const [todayHealth, setTodayHealth] = useState<TodayHealth | null>(null);
 
   const handleSyncFromHealth = async () => {
     if (!isHealthAvailable()) {
@@ -94,19 +114,26 @@ export default function Wellness() {
     setSyncingHealth(true);
     try {
       await requestHealthPermissions();
-      const hours = await getLastNightSleepHours();
-      if (hours == null) {
-        notify(
-          'No sleep data',
-          "Couldn't find a recent sleep session in Apple Health. Wear your watch overnight or log it in the Health app, then try again."
-        );
-        return;
-      }
-      setSleepDuration(String(hours));
+      const [sleepHours, steps, exerciseMinutes, workouts] = await Promise.all([
+        getLastNightSleepHours(),
+        getStepsToday(),
+        getExerciseMinutesToday(),
+        getWorkoutsToday(),
+      ]);
+      setTodayHealth({
+        steps,
+        exerciseMinutes,
+        sleepHours,
+        workouts: workouts ?? [],
+      });
+      if (sleepHours != null) setSleepDuration(String(sleepHours));
     } finally {
       setSyncingHealth(false);
     }
   };
+
+  const formatSteps = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`);
 
   const moods = ['😴', '😑', '😐', '🙂', '😄'];
   const getMoodLabel = (emoji: string) => {
@@ -184,6 +211,74 @@ export default function Wellness() {
           </View>
         </View>
 
+        {/* Today from Apple Health */}
+        {isHealthAvailable() && todayHealth && (
+          <View
+            style={[
+              styles.form,
+              { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor },
+            ]}
+          >
+            <Text style={[styles.formTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+              ❤️ Today from Apple Health
+            </Text>
+            <View style={styles.healthTodayRow}>
+              <View style={styles.healthTodayCell}>
+                <Text style={[styles.healthTodayValue, { color: accentColor, fontSize: fontSizes.heading }]}>
+                  {todayHealth.steps != null ? formatSteps(todayHealth.steps) : '—'}
+                </Text>
+                <Text style={[styles.healthTodayLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+                  👟 Steps
+                </Text>
+              </View>
+              <View style={styles.healthTodayCell}>
+                <Text style={[styles.healthTodayValue, { color: accentColor, fontSize: fontSizes.heading }]}>
+                  {todayHealth.exerciseMinutes != null ? `${todayHealth.exerciseMinutes}` : '—'}
+                </Text>
+                <Text style={[styles.healthTodayLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+                  🏃 Exercise min
+                </Text>
+              </View>
+              <View style={styles.healthTodayCell}>
+                <Text style={[styles.healthTodayValue, { color: accentColor, fontSize: fontSizes.heading }]}>
+                  {todayHealth.sleepHours != null ? `${todayHealth.sleepHours}h` : '—'}
+                </Text>
+                <Text style={[styles.healthTodayLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+                  🛏️ Sleep
+                </Text>
+              </View>
+            </View>
+            {todayHealth.workouts.length > 0 && (
+              <View style={styles.workoutsList}>
+                <Text style={[styles.workoutsTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
+                  🏋️ Workouts today ({todayHealth.workouts.length})
+                </Text>
+                {todayHealth.workouts.map((w) => {
+                  const bits = [`${w.durationMinutes} min`];
+                  if (w.distanceMeters != null) bits.push(formatDistance(w.distanceMeters));
+                  if (w.energyKcal != null) bits.push(`${w.energyKcal} kcal`);
+                  return (
+                    <View
+                      key={w.id}
+                      style={[
+                        styles.workoutRow,
+                        { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor },
+                      ]}
+                    >
+                      <Text style={[styles.workoutName, { color: presetValues.text, fontSize: fontSizes.base }]}>
+                        {w.activityName}
+                      </Text>
+                      <Text style={[styles.workoutMeta, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+                        {bits.join(' · ')}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Form Section */}
         <View
           style={[
@@ -214,7 +309,7 @@ export default function Wellness() {
                 <Text style={{ fontSize: 18 }}>❤️</Text>
               )}
               <Text style={[styles.healthSyncBtnText, { color: accentColor, fontSize: fontSizes.base }]}>
-                {syncingHealth ? 'Reading from Apple Health…' : 'Auto-fill sleep from Apple Health'}
+                {syncingHealth ? 'Reading from Apple Health…' : 'Sync from Apple Health'}
               </Text>
             </TouchableOpacity>
           )}
@@ -378,6 +473,22 @@ export default function Wellness() {
                     🛏️ {log.sleepDuration}h | 📵 {log.screenTime}h
                   </Text>
                 </View>
+                {(log.steps != null || log.exerciseMinutes != null || log.workoutsCount) && (
+                  <View style={styles.logRow}>
+                    <Text
+                      style={[
+                        styles.logItem,
+                        { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 },
+                      ]}
+                    >
+                      {[
+                        log.steps != null && `👟 ${formatSteps(log.steps)}`,
+                        log.exerciseMinutes != null && `🏃 ${log.exerciseMinutes}m`,
+                        log.workoutsCount && `🏋️ ${log.workoutsCount}`,
+                      ].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -406,6 +517,15 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   healthSyncBtnText: { fontWeight: '700' },
+  healthTodayRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  healthTodayCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  healthTodayValue: { fontWeight: '700', marginBottom: 2 },
+  healthTodayLabel: { fontWeight: '500' },
+  workoutsList: { marginTop: 12 },
+  workoutsTitle: { fontWeight: '600', marginBottom: 8 },
+  workoutRow: { borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1 },
+  workoutName: { fontWeight: '600', marginBottom: 2 },
+  workoutMeta: { fontWeight: '500' },
   label: { fontWeight: '500', marginBottom: 6 },
   input: { borderRadius: 8, padding: 12, marginBottom: 14, borderWidth: 1 },
   moodSelector: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 14 },

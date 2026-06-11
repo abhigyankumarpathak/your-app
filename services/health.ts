@@ -22,7 +22,27 @@ const READ_TYPES = [
   'HKCategoryTypeIdentifierSleepAnalysis',
   'HKQuantityTypeIdentifierStepCount',
   'HKQuantityTypeIdentifierAppleExerciseTime',
+  'HKWorkoutTypeIdentifier',
 ] as const;
+
+// Most common HKWorkoutActivityType values mapped to friendly names.
+// Anything not in this map falls back to "Workout".
+const WORKOUT_NAMES: Record<number, string> = {
+  6: 'Basketball', 11: 'Cross-Training', 13: 'Cycling', 16: 'Elliptical',
+  20: 'Strength Training', 24: 'Hiking', 29: 'Mind & Body', 35: 'Rowing',
+  37: 'Running', 46: 'Swimming', 48: 'Tennis', 50: 'Strength Training',
+  52: 'Walking', 57: 'Yoga', 58: 'Barre', 59: 'Core Training',
+  62: 'Flexibility', 63: 'HIIT', 64: 'Jump Rope', 65: 'Kickboxing',
+  66: 'Pilates', 73: 'Mixed Cardio',
+};
+
+export interface TodayWorkout {
+  id: string;
+  activityName: string;
+  durationMinutes: number;
+  energyKcal: number | null;
+  distanceMeters: number | null;
+}
 
 /** Ask the user for read access to sleep, steps, and exercise minutes.
  *  Returns true if the dialog completed (regardless of which toggles the user
@@ -104,6 +124,42 @@ export async function getStepsToday(): Promise<number | null> {
     return typeof sum === 'number' ? Math.round(sum) : null;
   } catch (e) {
     console.log('HealthKit steps query error:', e);
+    return null;
+  }
+}
+
+/** Discrete workout sessions logged today (midnight → now), newest first. */
+export async function getWorkoutsToday(): Promise<TodayWorkout[] | null> {
+  const hk = getHK();
+  if (!hk) return null;
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    const samples = await (hk as any).queryWorkoutSamples({
+      filter: { date: { startDate: start, endDate: end } },
+      limit: 0,
+      ascending: false,
+    });
+    if (!samples || samples.length === 0) return [];
+    return (samples as any[]).map((s, i) => {
+      const seconds = typeof s?.duration?.quantity === 'number' ? s.duration.quantity : 0;
+      const kcal = typeof s?.totalEnergyBurned?.quantity === 'number'
+        ? Math.round(s.totalEnergyBurned.quantity)
+        : null;
+      const meters = typeof s?.totalDistance?.quantity === 'number'
+        ? s.totalDistance.quantity
+        : null;
+      return {
+        id: s.uuid ?? `${s.startDate}-${i}`,
+        activityName: WORKOUT_NAMES[s.workoutActivityType] ?? 'Workout',
+        durationMinutes: Math.max(1, Math.round(seconds / 60)),
+        energyKcal: kcal,
+        distanceMeters: meters,
+      };
+    });
+  } catch (e) {
+    console.log('HealthKit workouts query error:', e);
     return null;
   }
 }

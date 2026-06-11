@@ -1,6 +1,6 @@
 # Focus App — Feature Reference
 
-*Last updated: 2026-05-14*
+*Last updated: 2026-06-09*
 
 ---
 
@@ -204,6 +204,16 @@ Creation uses a guided step-by-step modal with example answers for each field.
 - **Mood tracking** — 5 levels (😴 😑 😐 🙂 😄)
 - Analytics: average sleep hours, average screen time, total logs
 - Recent activity list with date and mood indicators
+
+### Apple Health Integration (iOS only)
+
+Powered by `services/health.ts` (`@kingstinct/react-native-healthkit`). Lazy-loaded so Android / web / Expo Go gracefully no-op.
+
+- **"Sync from Apple Health" button** requests read permission for sleep, steps, Apple Exercise minutes, and workouts in one prompt, then pulls all four in parallel.
+- Auto-fills the sleep-duration input from the most recent overnight session.
+- **"Today from Apple Health" card** appears after sync, showing today's steps, exercise minutes, and last night's sleep at a glance.
+- **Workouts list** — discrete HealthKit workout sessions logged today, each row showing activity name, duration, distance, and calories where available. Activity names mapped from `HKWorkoutActivityType` (running, cycling, yoga, HIIT, strength training, etc.; unknown types fall back to "Workout").
+- When saving a daily log, steps / exercise minutes / workout count are snapshotted into the log entry. Recent log cards surface them on a second line.
 
 ---
 
