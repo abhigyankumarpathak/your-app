@@ -8,7 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import { useAppState } from '../context/AppStateContext';
 import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
 import { areNotificationsAvailable, cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
-import { checkCalendarPermission, checkMediaLibraryPermission, isCalendarAvailable, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
+import { checkCalendarPermission, checkMediaLibraryPermission, isCalendarAvailable, openHealthSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
+import { isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
 import { getLastSyncedAt } from '../services/sync';
 import { confirm, notify } from '../services/dialog';
 import { toAvatarDataUrl } from '../services/avatar';
@@ -16,6 +17,7 @@ import { toAvatarDataUrl } from '../services/avatar';
 const IS_WEB = Platform.OS === 'web';
 const NOTIFICATIONS_AVAILABLE = areNotificationsAvailable();
 const CALENDAR_AVAILABLE = isCalendarAvailable();
+const HEALTH_AVAILABLE = isHealthAvailable();
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];
@@ -139,6 +141,7 @@ export default function Settings() {
   const [profileSaved, setProfileSaved] = useState(false);
 
   const [calendarPermission, setCalendarPermission] = useState(false);
+  const [healthPermission, setHealthPermission] = useState(false);
 
   const [notifPermission, setNotifPermission] = useState(false);
   const [studyReminderOn, setStudyReminderOn] = useState(false);
@@ -151,6 +154,9 @@ export default function Settings() {
     loadProfile();
     loadNotifSettings();
     checkMediaLibraryPermission().then(setMediaPermission);
+    // HealthKit hides read-access status from apps, so we can only remember
+    // whether the user has gone through the grant flow at least once.
+    AsyncStorage.getItem('focusHealthPermission').then((v) => setHealthPermission(v === 'true'));
     const appSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         checkCalendarPermission().then(setCalendarPermission);
@@ -194,6 +200,23 @@ export default function Settings() {
     const granted = await requestNotificationPermission();
     setNotifPermission(granted);
     await AsyncStorage.setItem('focusNotifPermission', String(granted));
+  };
+
+  const handleRequestHealthPermission = async () => {
+    if (!isHealthDataAvailable()) {
+      notify('Health not available', 'Open the Health app on this device first, then try again.');
+      return;
+    }
+    // If the user already granted once, tapping again opens iOS Health settings
+    // so they can review or change what Focus can read (Apple gives no in-app
+    // re-prompt once a choice has been made).
+    if (healthPermission) {
+      openHealthSettings();
+      return;
+    }
+    await requestHealthPermissions();
+    setHealthPermission(true);
+    await AsyncStorage.setItem('focusHealthPermission', 'true');
   };
 
   const parseTime = (t: string): [number, number] => {
@@ -896,6 +919,32 @@ export default function Settings() {
           <View style={[styles.permStatusBtn, styles.unavailableBadge, { borderColor: presetValues.borderColor }]}>
             <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: presetValues.textSecondary }]}>
               Not on web
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
+
+      {/* Apple Health */}
+      <View style={styles.notifRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>🍎 Apple Health</Text>
+          <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Steps, sleep & workouts</Text>
+        </View>
+        {HEALTH_AVAILABLE ? (
+          <TouchableOpacity
+            style={[styles.permStatusBtn, { backgroundColor: healthPermission ? '#10B98120' : '#EF444420', borderColor: healthPermission ? '#10B981' : '#EF4444' }]}
+            onPress={handleRequestHealthPermission}
+          >
+            <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: healthPermission ? '#10B981' : '#EF4444' }]}>
+              {healthPermission ? '✓ Enabled' : 'Allow'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.permStatusBtn, styles.unavailableBadge, { borderColor: presetValues.borderColor }]}>
+            <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: presetValues.textSecondary }]}>
+              iOS only
             </Text>
           </View>
         )}

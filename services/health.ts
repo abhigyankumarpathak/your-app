@@ -118,7 +118,7 @@ export async function getStepsToday(): Promise<number | null> {
     const result = await hk.queryStatisticsForQuantity(
       'HKQuantityTypeIdentifierStepCount' as any,
       ['cumulativeSum'] as any,
-      { filter: { startDate: start, endDate: end } } as any,
+      { filter: { date: { startDate: start, endDate: end } } } as any,
     );
     const sum = (result as any)?.sumQuantity?.quantity;
     return typeof sum === 'number' ? Math.round(sum) : null;
@@ -175,7 +175,7 @@ export async function getExerciseMinutesToday(): Promise<number | null> {
     const result = await hk.queryStatisticsForQuantity(
       'HKQuantityTypeIdentifierAppleExerciseTime' as any,
       ['cumulativeSum'] as any,
-      { filter: { startDate: start, endDate: end } } as any,
+      { filter: { date: { startDate: start, endDate: end } } } as any,
     );
     const sum = (result as any)?.sumQuantity?.quantity;
     return typeof sum === 'number' ? Math.round(sum) : null;
