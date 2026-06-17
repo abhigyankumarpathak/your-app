@@ -25,6 +25,57 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Running on Windows / Linux / any non-Mac (Expo Go)
+
+Collaborators **don't need a Mac, Xcode, or the iOS simulator.** They run the app
+on their own phone (iOS or Android) through the free **Expo Go** app, while the
+project owner can keep building the native dev client on the Mac simulator.
+
+### One-time setup (each collaborator)
+
+1. Install [Node.js LTS](https://nodejs.org) and the **Expo Go** app from the
+   App Store / Google Play on their phone.
+2. Clone the repo and install dependencies:
+   ```bash
+   git clone <repo-url>
+   cd your-app
+   npm install
+   ```
+3. Create the env file (the real `.env` is never committed):
+   ```bash
+   cp .env.example .env      # Windows: copy .env.example .env
+   ```
+   Then paste in the two `EXPO_PUBLIC_SUPABASE_*` values. Ask the project owner
+   to send you theirs so everyone shares the same backend.
+
+### Every time — start the server and scan the QR
+
+```bash
+npm run go            # phone + computer on the SAME Wi-Fi
+# or, if the QR won't connect (different networks, locked-down/campus Wi-Fi):
+npm run go:tunnel     # routes through Expo's servers; slower but works anywhere
+```
+
+Open **Expo Go** on the phone and scan the QR code in the terminal
+(iPhone: use the Camera app; Android: scan from inside Expo Go). The app loads
+over the air — no build step.
+
+> **What works in Expo Go:** everything except the iOS-only **Apple Health**
+> integration (steps/sleep/workouts), which needs the native build. The app
+> detects this and simply skips those features in Expo Go, so nothing crashes —
+> Android phones wouldn't have Apple Health anyway. Local notifications work but
+> may print a harmless "not supported in Expo Go" warning.
+
+### Project owner (Mac) — unchanged
+
+Keep running the full native dev client on the iOS simulator:
+
+```bash
+npm run ios
+```
+
+Both workflows can run against the same Supabase project at the same time.
+
 ## Get a fresh project
 
 When you're ready, run:
