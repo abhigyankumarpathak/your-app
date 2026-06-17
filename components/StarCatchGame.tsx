@@ -1,7 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { StarToken, starColor } from '../components/art/GameIcons';
 import { todayDateKey } from '../services/streaks';
+import { accentGradient, alpha, elevation } from '../theme/design';
+
+const NIGHT_SKY = ['#1E1B4B', '#312E81', '#4C1D95'] as const;
 
 type GameState = 'idle' | 'playing' | 'over';
 
@@ -66,6 +71,16 @@ export default function StarCatchGame({
   const tickRef    = useRef<any>(null);
   const spawnRef   = useRef<any>(null);
   const countRef   = useRef<any>(null);
+
+  const introPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(introPulse, { toValue: 1.12, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+      Animated.timing(introPulse, { toValue: 1, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
 
   const cleanup = () => {
     if (tickRef.current)  clearInterval(tickRef.current);
@@ -168,7 +183,10 @@ export default function StarCatchGame({
       <View style={styles.overlay}>
         <View style={[styles.box, { width: W + 24, backgroundColor: cardBg }]}>
           <View style={styles.topBar}>
-            <Text style={[styles.title, { color: textColor }]}>⭐ Star Catch</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <StarToken size={22} worth={10} />
+              <Text style={[styles.title, { color: textColor }]}>Star Catch</Text>
+            </View>
             <TouchableOpacity onPress={onClose}>
               <Text style={[styles.closeX, { color: textColor }]}>✕</Text>
             </TouchableOpacity>
@@ -176,15 +194,27 @@ export default function StarCatchGame({
 
           {state === 'idle' && (
             <View style={styles.intro}>
-              <Text style={styles.bigStar}>🌟</Text>
+              <Animated.View style={{ transform: [{ scale: introPulse }] }}>
+                <StarToken size={92} worth={25} />
+              </Animated.View>
               <Text style={[styles.introTitle, { color: textColor }]}>Catch the falling stars!</Text>
               <Text style={[styles.introSub, { color: textColor }]}>
                 Tap stars before they fall off screen.{'\n'}
-                Bigger stars = more XP. Build combos for multipliers!{'\n'}
-                ⭐ +5 · 🌟 +10 · ✨ +15 · 💫 +25 · ☄️ +50
+                Bigger stars = more XP. Build combos for multipliers!
               </Text>
-              <TouchableOpacity style={[styles.playBtn, { backgroundColor: accent }]} onPress={startGame}>
-                <Text style={styles.playBtnText}>▶  PLAY ({GAME_DURATION}s)</Text>
+              {/* Value legend with real tokens */}
+              <View style={styles.legend}>
+                {STAR_TYPES.map((t) => (
+                  <View key={t.worth} style={styles.legendCell}>
+                    <StarToken size={26} worth={t.worth} />
+                    <Text style={[styles.legendVal, { color: starColor(t.worth) }]}>+{t.worth}</Text>
+                  </View>
+                ))}
+              </View>
+              <TouchableOpacity activeOpacity={0.85} onPress={startGame} style={[styles.playBtnWrap, elevation(2)]}>
+                <LinearGradient colors={accentGradient(accent)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playBtn}>
+                  <Text style={styles.playBtnText}>▶  PLAY ({GAME_DURATION}s)</Text>
+                </LinearGradient>
               </TouchableOpacity>
               <Text style={[styles.note, { color: textColor }]}>
                 Score is converted 1:1 to bonus XP (max 250)
@@ -210,16 +240,17 @@ export default function StarCatchGame({
                 </View>
               </View>
 
-              {/* Game area */}
-              <View style={[styles.arena, { width: W, height: H, backgroundColor: bgSecondary }]}>
-                {/* Background dots for depth */}
-                {Array.from({ length: 8 }, (_, i) => (
+              {/* Game area — night sky */}
+              <View style={[styles.arena, { width: W, height: H }]}>
+                <LinearGradient colors={NIGHT_SKY as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill as any} />
+                {/* Background star dots for depth */}
+                {Array.from({ length: 22 }, (_, i) => (
                   <View key={`d${i}`} style={{
                     position: 'absolute',
-                    left: (i * 53) % W,
-                    top: (i * 71) % H,
-                    width: 3, height: 3, borderRadius: 1.5,
-                    backgroundColor: textColor, opacity: 0.1,
+                    left: (i * 47) % (W - 6),
+                    top: (i * 83) % (H - 6),
+                    width: i % 4 === 0 ? 3 : 2, height: i % 4 === 0 ? 3 : 2, borderRadius: 2,
+                    backgroundColor: '#fff', opacity: i % 3 === 0 ? 0.5 : 0.22,
                   }} />
                 ))}
                 {stars.map((s) => {
@@ -227,6 +258,7 @@ export default function StarCatchGame({
                   const elapsed = (Date.now() - s.startedAt) / 1000;
                   const y = s.startY + elapsed * s.vy;
                   if (y > H) return null;
+                  const tokenSize = s.worth >= 50 ? 56 : s.worth >= 25 ? 50 : s.worth >= 15 ? 46 : 42;
                   return (
                     <TouchableOpacity
                       key={s.id}
@@ -234,16 +266,14 @@ export default function StarCatchGame({
                       onPress={() => catchStar(s)}
                       style={{
                         position: 'absolute',
-                        left: s.x,
+                        left: s.x - (tokenSize - 50) / 2,
                         top: y,
-                        width: 50, height: 50,
+                        width: tokenSize, height: tokenSize,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: s.worth >= 50 ? 38 : s.worth >= 25 ? 34 : s.worth >= 15 ? 30 : 28 }}>
-                        {s.emoji}
-                      </Text>
+                      <StarToken size={tokenSize} worth={s.worth} />
                     </TouchableOpacity>
                   );
                 })}
@@ -259,19 +289,29 @@ export default function StarCatchGame({
 
           {state === 'over' && (
             <View style={styles.intro}>
-              <Text style={styles.bigStar}>🏁</Text>
-              <Text style={[styles.introTitle, { color: textColor }]}>Time's up!</Text>
-              <View style={[styles.scoreBox, { borderColor: accent }]}>
-                <Text style={[styles.scoreLabel, { color: textColor }]}>Final Score</Text>
+              <StarToken size={80} worth={score >= 150 ? 50 : score >= 80 ? 25 : 10} />
+              <Text style={[styles.introTitle, { color: textColor }]}>Time&apos;s up!</Text>
+              <LinearGradient
+                colors={[alpha(accent, 0.16), alpha(accent, 0.04)]}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={[styles.scoreBox, { borderColor: accent }]}
+              >
+                <Text style={[styles.scoreLabel, { color: textColor }]}>FINAL SCORE</Text>
                 <Text style={[styles.scoreValue, { color: accent }]}>{score}</Text>
-                <Text style={[styles.scoreLabel, { color: textColor }]}>= {Math.min(score, 250)} bonus XP</Text>
-              </View>
+                <View style={[styles.xpReward, { backgroundColor: accent }]}>
+                  <Text style={styles.xpRewardText}>+{Math.min(score, 250)} bonus XP</Text>
+                </View>
+              </LinearGradient>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={[styles.playBtn, { backgroundColor: bgSecondary, flex: 1 }]} onPress={startGame}>
-                  <Text style={[styles.playBtnText, { color: textColor }]}>↻ Play again</Text>
+                <TouchableOpacity style={[styles.playBtnWrap, { flex: 1 }]} activeOpacity={0.85} onPress={startGame}>
+                  <View style={[styles.playBtn, { backgroundColor: bgSecondary }]}>
+                    <Text style={[styles.playBtnText, { color: textColor }]}>↻ Play again</Text>
+                  </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.playBtn, { backgroundColor: accent, flex: 1 }]} onPress={claim}>
-                  <Text style={styles.playBtnText}>✓ Claim XP</Text>
+                <TouchableOpacity style={[styles.playBtnWrap, { flex: 1 }, elevation(2)]} activeOpacity={0.85} onPress={claim}>
+                  <LinearGradient colors={accentGradient(accent)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playBtn}>
+                    <Text style={styles.playBtnText}>✓ Claim XP</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -317,12 +357,17 @@ const styles = StyleSheet.create({
   closeX: { fontSize: 22, fontWeight: '700', paddingHorizontal: 8 },
 
   intro: { alignItems: 'center', padding: 16, gap: 10 },
-  bigStar: { fontSize: 72 },
   introTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
   introSub: { fontSize: 13, textAlign: 'center', lineHeight: 20, opacity: 0.75 },
-  playBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, marginTop: 8 },
+  legend: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' },
+  legendCell: { alignItems: 'center', gap: 2 },
+  legendVal: { fontSize: 11, fontWeight: '900' },
+  playBtnWrap: { borderRadius: 14, marginTop: 8, overflow: 'hidden' },
+  playBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   playBtnText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   note: { fontSize: 11, opacity: 0.6, marginTop: 4, textAlign: 'center' },
+  xpReward: { marginTop: 8, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 6 },
+  xpRewardText: { color: '#fff', fontWeight: '900', fontSize: 14 },
 
   hud: { flexDirection: 'row', gap: 8, width: '100%', paddingHorizontal: 4, marginBottom: 8 },
   hudPill: { flex: 1, borderRadius: 12, paddingVertical: 6, alignItems: 'center' },

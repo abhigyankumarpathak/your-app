@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { Drawer } from 'expo-router/drawer';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, DeviceEventEmitter, Platform, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppStateProvider, useAppState } from '../context/AppStateContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
+import Login from './login';
 import Onboarding from './onboarding';
 
 // Must be set at app root so foreground notifications show alerts
@@ -27,9 +29,20 @@ function DrawerLayout() {
     <Drawer
       screenOptions={{
         drawerActiveTintColor: accentColor,
-        headerStyle: { backgroundColor: accentColor },
+        headerTransparent: false,
+        headerBackground: () => (
+          <LinearGradient
+            colors={accentGradient(accentColor)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ),
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerTitleStyle: { fontWeight: '800' },
+        drawerActiveBackgroundColor: accentColor + '1A',
+        drawerItemStyle: { borderRadius: 12 },
+        drawerLabelStyle: { fontWeight: '600', marginLeft: -8 },
       }}
     >
       <Drawer.Screen
@@ -90,22 +103,12 @@ function DrawerLayout() {
 
 function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boolean; setOnboardingDone: (v: boolean) => void }) {
   const { session, loading } = useAuth();
+  // Lets a user proceed without an account ("Maybe later").
+  const [authSkipped, setAuthSkipped] = useState(false);
 
-  useEffect(() => {
-    // Wait until the SDK has finished restoring the session from storage —
-    // otherwise the initial `session === null` from useState fires this
-    // redirect on every web reload before getSession() can resolve.
-    if (loading) return;
-    if (!onboardingDone) return;
-    if (session === null) {
-      router.replace('/login');
-    }
-  }, [session, onboardingDone, loading]);
-
-  if (!onboardingDone) {
-    return <Onboarding onComplete={() => setOnboardingDone(true)} />;
-  }
-
+  // Wait until the SDK has finished restoring the session from storage —
+  // otherwise the initial `session === null` flashes the login gate on every
+  // reload before getSession() can resolve.
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
@@ -114,6 +117,29 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
     );
   }
 
+  // 1. Auth first — sign up / log in before onboarding.
+  if (session === null && !authSkipped) {
+    return (
+      <Login
+        onDone={(outcome) => {
+          // Existing users who SIGN IN have already onboarded — skip it.
+          // Sign-up and "maybe later" fall through to onboarding.
+          if (outcome === 'signIn') {
+            AsyncStorage.setItem('focusOnboardingComplete', 'true');
+            setOnboardingDone(true);
+          }
+          setAuthSkipped(true);
+        }}
+      />
+    );
+  }
+
+  // 2. Then onboarding — first launch, sign-up, or after a reset.
+  if (!onboardingDone) {
+    return <Onboarding onComplete={() => setOnboardingDone(true)} />;
+  }
+
+  // 3. Then the app.
   return <DrawerLayout />;
 }
 

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { GlyphKey } from '../components/art/GameIcons';
 
 export interface StreakData {
   current: number;
@@ -9,6 +10,7 @@ export interface StreakData {
 export interface Achievement {
   id: string;
   icon: string;
+  art: GlyphKey;
   label: string;
   description: string;
   category: 'streak' | 'sessions' | 'time' | 'mastery' | 'special';
@@ -17,32 +19,32 @@ export interface Achievement {
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
   // ── Streak ──────────────────────────────────────────────────────────────
-  { id: 'streak_3',    icon: '🔥', label: '3-Day Streak',     description: 'Study 3 days in a row',          category: 'streak',   rarity: 'common'    },
-  { id: 'streak_7',    icon: '⚡', label: 'Week Warrior',      description: 'Study 7 days in a row',          category: 'streak',   rarity: 'rare'      },
-  { id: 'streak_14',   icon: '🌙', label: 'Two-Week Titan',    description: 'Study 14 days in a row',         category: 'streak',   rarity: 'epic'      },
-  { id: 'streak_30',   icon: '👑', label: 'Monthly Master',    description: 'Study 30 days in a row',         category: 'streak',   rarity: 'legendary' },
+  { id: 'streak_3',    icon: '🔥', art: 'flame',label: '3-Day Streak',     description: 'Study 3 days in a row',          category: 'streak',   rarity: 'common'    },
+  { id: 'streak_7',    icon: '⚡', art: 'bolt',label: 'Week Warrior',      description: 'Study 7 days in a row',          category: 'streak',   rarity: 'rare'      },
+  { id: 'streak_14',   icon: '🌙', art: 'moon',label: 'Two-Week Titan',    description: 'Study 14 days in a row',         category: 'streak',   rarity: 'epic'      },
+  { id: 'streak_30',   icon: '👑', art: 'crown',label: 'Monthly Master',    description: 'Study 30 days in a row',         category: 'streak',   rarity: 'legendary' },
 
   // ── Sessions ─────────────────────────────────────────────────────────────
-  { id: 'first_session', icon: '🎓', label: 'First Step',      description: 'Complete your first session',    category: 'sessions', rarity: 'common'    },
-  { id: 'sessions_10',   icon: '⭐', label: 'Getting Going',    description: 'Complete 10 sessions',           category: 'sessions', rarity: 'common'    },
-  { id: 'sessions_25',   icon: '🌟', label: 'Committed',        description: 'Complete 25 sessions',           category: 'sessions', rarity: 'rare'      },
-  { id: 'sessions_50',   icon: '💫', label: 'Dedicated',        description: 'Complete 50 sessions',           category: 'sessions', rarity: 'epic'      },
-  { id: 'century',       icon: '🏆', label: 'Century',          description: 'Complete 100 sessions',          category: 'sessions', rarity: 'legendary' },
+  { id: 'first_session', icon: '🎓', art: 'star',label: 'First Step',      description: 'Complete your first session',    category: 'sessions', rarity: 'common'    },
+  { id: 'sessions_10',   icon: '⭐', art: 'star',label: 'Getting Going',    description: 'Complete 10 sessions',           category: 'sessions', rarity: 'common'    },
+  { id: 'sessions_25',   icon: '🌟', art: 'sparkle',label: 'Committed',        description: 'Complete 25 sessions',           category: 'sessions', rarity: 'rare'      },
+  { id: 'sessions_50',   icon: '💫', art: 'gem',label: 'Dedicated',        description: 'Complete 50 sessions',           category: 'sessions', rarity: 'epic'      },
+  { id: 'century',       icon: '🏆', art: 'medal',label: 'Century',          description: 'Complete 100 sessions',          category: 'sessions', rarity: 'legendary' },
 
   // ── Time ─────────────────────────────────────────────────────────────────
-  { id: 'marathon',      icon: '📚', label: 'Marathon',         description: 'Study 3+ hours in one day',      category: 'time',     rarity: 'rare'      },
-  { id: 'hours_10',      icon: '⏱️', label: '10 Hour Club',     description: 'Study 10 total hours',           category: 'time',     rarity: 'common'    },
-  { id: 'hours_50',      icon: '🔋', label: 'Powerhouse',       description: 'Study 50 total hours',           category: 'time',     rarity: 'epic'      },
-  { id: 'hours_100',     icon: '💎', label: 'Diamond Grinder',  description: 'Study 100 total hours',          category: 'time',     rarity: 'legendary' },
-  { id: 'early_bird',    icon: '🐦', label: 'Early Bird',       description: 'Log a session before 9 AM',      category: 'time',     rarity: 'rare'      },
-  { id: 'night_owl',     icon: '🦉', label: 'Night Owl',        description: 'Log a session after 9 PM',       category: 'time',     rarity: 'rare'      },
+  { id: 'marathon',      icon: '📚', art: 'books',label: 'Marathon',         description: 'Study 3+ hours in one day',      category: 'time',     rarity: 'rare'      },
+  { id: 'hours_10',      icon: '⏱️', art: 'clock',label: '10 Hour Club',     description: 'Study 10 total hours',           category: 'time',     rarity: 'common'    },
+  { id: 'hours_50',      icon: '🔋', art: 'bolt',label: 'Powerhouse',       description: 'Study 50 total hours',           category: 'time',     rarity: 'epic'      },
+  { id: 'hours_100',     icon: '💎', art: 'gem',label: 'Diamond Grinder',  description: 'Study 100 total hours',          category: 'time',     rarity: 'legendary' },
+  { id: 'early_bird',    icon: '🐦', art: 'sun',label: 'Early Bird',       description: 'Log a session before 9 AM',      category: 'time',     rarity: 'rare'      },
+  { id: 'night_owl',     icon: '🦉', art: 'moon',label: 'Night Owl',        description: 'Log a session after 9 PM',       category: 'time',     rarity: 'rare'      },
 
   // ── Mastery ──────────────────────────────────────────────────────────────
-  { id: 'well_rounded',   icon: '🌈', label: 'Well-Rounded',    description: 'Study 5+ different subjects',    category: 'mastery',  rarity: 'rare'      },
-  { id: 'subject_master', icon: '🎯', label: 'Subject Master',   description: '10 sessions in one subject',    category: 'mastery',  rarity: 'epic'      },
-  { id: 'note_keeper',    icon: '📓', label: 'Note Keeper',      description: 'Add notes to 5 sessions',       category: 'mastery',  rarity: 'common'    },
-  { id: 'perfect_day',    icon: '✅', label: 'Perfect Day',      description: 'Hit your daily study goal',     category: 'mastery',  rarity: 'common'    },
-  { id: 'perfect_week',   icon: '📅', label: 'Perfect Week',     description: 'Hit your goal 7 days in a row', category: 'mastery',  rarity: 'legendary' },
+  { id: 'well_rounded',   icon: '🌈', art: 'sparkle',label: 'Well-Rounded',    description: 'Study 5+ different subjects',    category: 'mastery',  rarity: 'rare'      },
+  { id: 'subject_master', icon: '🎯', art: 'target',label: 'Subject Master',   description: '10 sessions in one subject',    category: 'mastery',  rarity: 'epic'      },
+  { id: 'note_keeper',    icon: '📓', art: 'scroll',label: 'Note Keeper',      description: 'Add notes to 5 sessions',       category: 'mastery',  rarity: 'common'    },
+  { id: 'perfect_day',    icon: '✅', art: 'check',label: 'Perfect Day',      description: 'Hit your daily study goal',     category: 'mastery',  rarity: 'common'    },
+  { id: 'perfect_week',   icon: '📅', art: 'calendar',label: 'Perfect Week',     description: 'Hit your goal 7 days in a row', category: 'mastery',  rarity: 'legendary' },
 ];
 
 export const RARITY_COLORS: Record<Achievement['rarity'], string> = {

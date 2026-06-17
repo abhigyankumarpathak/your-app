@@ -1,11 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { GlyphKey } from '../components/art/GameIcons';
+import type { Tier } from '../theme/design';
 
 const todayStr = () => new Date().toLocaleDateString();
 const filterToday = (sessions: any[]) => sessions.filter(s => s.date === todayStr());
 
+/** Quest tier derived from its bonus XP — drives crest color + label. */
+function tierForXP(xp: number): Tier {
+  if (xp >= 50) return 'legendary';
+  if (xp >= 35) return 'epic';
+  if (xp >= 20) return 'rare';
+  return 'common';
+}
+
 interface QuestDef {
   id: string;
   icon: string;
+  art: GlyphKey;
   title: string;
   description: string;
   bonusXP: number;
@@ -17,6 +28,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'study_starter',
     icon: '🎯',
+    art: 'target',
     title: 'Study Starter',
     description: 'Log 1 session today',
     bonusXP: 10,
@@ -26,6 +38,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'double_session',
     icon: '🔁',
+    art: 'swords',
     title: 'Double Down',
     description: 'Log 2 sessions today',
     bonusXP: 20,
@@ -35,6 +48,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'triple_session',
     icon: '🎰',
+    art: 'dice',
     title: 'Triple Threat',
     description: 'Log 3 sessions today',
     bonusXP: 35,
@@ -44,6 +58,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'subject_hopper',
     icon: '🌀',
+    art: 'swap',
     title: 'Subject Hopper',
     description: 'Study 2 different subjects today',
     bonusXP: 25,
@@ -56,6 +71,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'multi_scholar',
     icon: '🌈',
+    art: 'books',
     title: 'Multi-Scholar',
     description: 'Study 3 different subjects today',
     bonusXP: 40,
@@ -68,6 +84,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'focus_block',
     icon: '⚡',
+    art: 'bolt',
     title: 'Focus Block',
     description: 'Study 30+ min in one session',
     bonusXP: 30,
@@ -80,6 +97,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'deep_focus',
     icon: '🧠',
+    art: 'brain',
     title: 'Deep Focus',
     description: 'Study 1+ hour in one session',
     bonusXP: 50,
@@ -92,6 +110,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'hour_hero',
     icon: '🦸',
+    art: 'shield',
     title: 'Hour Hero',
     description: 'Study 1+ hour total today',
     bonusXP: 40,
@@ -104,6 +123,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'note_taker',
     icon: '📝',
+    art: 'scroll',
     title: 'Note Taker',
     description: 'Add notes to a session',
     bonusXP: 15,
@@ -116,6 +136,7 @@ const QUEST_POOL: QuestDef[] = [
   {
     id: 'goal_crusher',
     icon: '🏅',
+    art: 'medal',
     title: 'Goal Crusher',
     description: 'Hit your daily study goal',
     bonusXP: 50,
@@ -164,6 +185,8 @@ export interface DailyQuestState {
 export interface QuestDisplay {
   id: string;
   icon: string;
+  art: GlyphKey;
+  tier: Tier;
   title: string;
   description: string;
   bonusXP: number;
@@ -199,6 +222,8 @@ export const getTodayQuestDisplays = async (
     return {
       id,
       icon: def.icon,
+      art: def.art,
+      tier: tierForXP(def.bonusXP),
       title: def.title,
       description: def.description,
       bonusXP: def.bonusXP,

@@ -2,11 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Animated, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { QuestCrest } from '../components/art/GameIcons';
 import Avatar from '../components/Avatar';
 import { useTheme } from '../context/ThemeContext';
 import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
-import { ALL_ACHIEVEMENTS, getLevel, getLevelTitle, loadAchievements, loadStreakData, loadXP } from '../services/streaks';
+import { ALL_ACHIEVEMENTS, RARITY_COLORS, getLevel, getLevelTitle, loadAchievements, loadStreakData, loadXP } from '../services/streaks';
+import { TIER_COLORS, accentGradient, alpha, elevation } from '../theme/design';
 
 function StatCard({ label, value, unit, icon, color, route, presetValues, fontSizes, delay }: any) {
   const fade = useRef(new Animated.Value(0)).current;
@@ -22,16 +26,27 @@ function StatCard({ label, value, unit, icon, color, route, presetValues, fontSi
       <TouchableOpacity
         activeOpacity={0.78}
         onPress={() => router.push(route)}
-        style={[styles.statCard, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}
+        style={[styles.statCard, elevation(2), { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}
       >
-        <View style={[styles.statIconBox, { backgroundColor: color + '1F' }]}>
-          <Text style={{ fontSize: 22 }}>{icon}</Text>
+        {/* Accent edge */}
+        <View style={[styles.statAccent, { backgroundColor: color }]} />
+        <View style={styles.statTopRow}>
+          <LinearGradient
+            colors={accentGradient(color)}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.statIconBox}
+          >
+            <Ionicons name={icon} size={20} color="#fff" />
+          </LinearGradient>
+          <Ionicons name="chevron-forward" size={16} color={presetValues.textSecondary} style={{ opacity: 0.5 }} />
         </View>
-        <Text style={[styles.statValue, { color: presetValues.text, fontSize: fontSizes.heading - 2 }]}>
-          {value}
-        </Text>
-        <Text style={[styles.statUnit, { color: presetValues.textSecondary, fontSize: fontSizes.base - 3 }]}>{unit}</Text>
-        <Text style={[styles.statLabel, { color: presetValues.text, fontSize: fontSizes.base - 1 }]}>{label}</Text>
+        <View style={styles.statValueRow}>
+          <Text style={[styles.statValue, { color: presetValues.text, fontSize: fontSizes.heading - 1 }]}>
+            {value}
+          </Text>
+          <Text style={[styles.statUnit, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}> {unit}</Text>
+        </View>
+        <Text style={[styles.statLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -151,15 +166,16 @@ export default function Dashboard() {
         style={[
           styles.hero,
           {
-            backgroundColor: accentColor,
             opacity: heroAnim,
             transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
           },
         ]}
       >
+        <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill as any} />
         {/* Floating decorative circles */}
-        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.10)', top: -40, right: -30, width: 140, height: 140 }]} />
-        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.08)', bottom: -50, left: -40, width: 160, height: 160 }]} />
+        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.12)', top: -40, right: -30, width: 140, height: 140 }]} />
+        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.09)', bottom: -50, left: -40, width: 160, height: 160 }]} />
+        <View style={[styles.heroBlob, { backgroundColor: 'rgba(255,255,255,0.06)', top: 50, left: 90, width: 60, height: 60 }]} />
 
         <View style={styles.heroTop}>
           <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.8}>
@@ -222,14 +238,15 @@ export default function Dashboard() {
         {showAchievements && (
           <View style={[styles.achShelf, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
             <Text style={[styles.achTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
-              🏅 Achievements ({achievements.length}/{ALL_ACHIEVEMENTS.length})
+              Achievements ({achievements.length}/{ALL_ACHIEVEMENTS.length})
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.achRow}>
               {ALL_ACHIEVEMENTS.map((ach) => {
                 const earned = achievements.includes(ach.id);
+                const rc = RARITY_COLORS[ach.rarity];
                 return (
-                  <View key={ach.id} style={[styles.achBadge, { backgroundColor: earned ? accentColor + '22' : presetValues.bgSecondary, borderColor: earned ? accentColor : presetValues.borderColor }]}>
-                    <Text style={[styles.achIcon, { opacity: earned ? 1 : 0.3 }]}>{ach.icon}</Text>
+                  <View key={ach.id} style={[styles.achBadge, { backgroundColor: earned ? alpha(rc, 0.1) : presetValues.bgSecondary, borderColor: earned ? rc : presetValues.borderColor }]}>
+                    <QuestCrest glyph={ach.art} color={rc} size={36} locked={!earned} />
                     <Text style={[styles.achLabel, { color: earned ? presetValues.text : presetValues.textSecondary, fontSize: fontSizes.base - 3 }]}>
                       {ach.label}
                     </Text>
@@ -253,8 +270,8 @@ export default function Dashboard() {
               }]}
             >
               <View style={styles.questTeaserLeft}>
-                <View style={[styles.questIconBubble, { backgroundColor: allDone ? 'rgba(255,255,255,0.25)' : accentColor + '22' }]}>
-                  <Text style={{ fontSize: 24 }}>⚔️</Text>
+                <View style={[styles.questIconBubble, { backgroundColor: allDone ? 'rgba(255,255,255,0.25)' : alpha(accentColor, 0.14) }]}>
+                  <QuestCrest glyph="swords" color={allDone ? '#FFFFFF' : accentColor} glyphColor={allDone ? accentColor : '#FFFFFF'} size={38} />
                 </View>
                 <View>
                   <Text style={[styles.questTeaserTitle, { color: allDone ? '#fff' : presetValues.text, fontSize: fontSizes.base + 1 }]}>
@@ -267,7 +284,9 @@ export default function Dashboard() {
               </View>
               <View style={styles.questTeaserRight}>
                 {questDisplays.map(q => (
-                  <Text key={q.id} style={{ fontSize: 18, opacity: q.completed ? 1 : 0.3 }}>{q.icon}</Text>
+                  <View key={q.id} style={{ opacity: q.completed ? 1 : 0.4 }}>
+                    <QuestCrest glyph={q.art} color={allDone ? '#FFFFFF' : TIER_COLORS[q.tier]} glyphColor={allDone ? accentColor : '#FFFFFF'} size={26} />
+                  </View>
                 ))}
               </View>
             </TouchableOpacity>
@@ -279,24 +298,26 @@ export default function Dashboard() {
         </Text>
 
         <View style={styles.statGrid}>
-          <StatCard label="Study Time"   value={stats.studyHours} unit="hours" icon="🎯" color={accentColor} route="/study"      presetValues={presetValues} fontSizes={fontSizes} delay={0}   />
-          <StatCard label="Tasks"        value={stats.tasks}      unit="open"  icon="✅" color={accentColor} route="/tasks"      presetValues={presetValues} fontSizes={fontSizes} delay={80}  />
-          <StatCard label="Sleep"        value={stats.sleepHours} unit="hours" icon="😴" color={accentColor} route="/wellness"   presetValues={presetValues} fontSizes={fontSizes} delay={160} />
-          <StatCard label="Screen Time"  value={stats.screenTime} unit="hours" icon="📵" color={accentColor} route="/screentime" presetValues={presetValues} fontSizes={fontSizes} delay={240} />
+          <StatCard label="Study Time"   value={stats.studyHours} unit="hours" icon="time"            color="#3B82F6" route="/study"      presetValues={presetValues} fontSizes={fontSizes} delay={0}   />
+          <StatCard label="Tasks"        value={stats.tasks}      unit="open"  icon="checkmark-done" color="#10B981" route="/tasks"      presetValues={presetValues} fontSizes={fontSizes} delay={80}  />
+          <StatCard label="Sleep"        value={stats.sleepHours} unit="hours" icon="moon"           color="#8B5CF6" route="/wellness"   presetValues={presetValues} fontSizes={fontSizes} delay={160} />
+          <StatCard label="Screen Time"  value={stats.screenTime} unit="hours" icon="phone-portrait" color="#F59E0B" route="/screentime" presetValues={presetValues} fontSizes={fontSizes} delay={240} />
         </View>
 
         {/* Quick action — start a session */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => router.push('/study')}
-          style={[styles.ctaBtn, { backgroundColor: accentColor }]}
+          style={[styles.ctaWrap, elevation(3)]}
         >
-          <Text style={styles.ctaIcon}>▶</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.ctaTitle, { fontSize: fontSizes.base + 1 }]}>Start a study session</Text>
-            <Text style={styles.ctaSub}>Tap to launch the focus timer</Text>
-          </View>
-          <Text style={styles.ctaArrow}>→</Text>
+          <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
+            <Text style={styles.ctaIcon}>▶</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.ctaTitle, { fontSize: fontSizes.base + 1 }]}>Start a study session</Text>
+              <Text style={styles.ctaSub}>Tap to launch the focus timer</Text>
+            </View>
+            <Text style={styles.ctaArrow}>→</Text>
+          </LinearGradient>
         </TouchableOpacity>
 
         <View style={[styles.tipBox, { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor }]}>
@@ -368,7 +389,7 @@ const styles = StyleSheet.create({
   achShelf: { borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1 },
   achTitle: { fontWeight: '700', marginBottom: 10 },
   achRow: { gap: 8, paddingBottom: 4 },
-  achBadge: { borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5, minWidth: 68 },
+  achBadge: { borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5, minWidth: 68, gap: 5 },
   achIcon: { fontSize: 22, marginBottom: 4 },
   achLabel: { fontWeight: '600', textAlign: 'center' },
 
@@ -376,22 +397,24 @@ const styles = StyleSheet.create({
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   statCard: {
     borderRadius: 18, padding: 14, borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+    position: 'relative', overflow: 'hidden',
   },
-  statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  statValue: { fontWeight: '900', lineHeight: 28 },
-  statUnit: { fontWeight: '600', marginTop: -2, marginBottom: 6 },
-  statLabel: { fontWeight: '600' },
+  statAccent: { position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, opacity: 0.9 },
+  statTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline' },
+  statValue: { fontWeight: '900', lineHeight: 30 },
+  statUnit: { fontWeight: '700' },
+  statLabel: { fontWeight: '600', marginTop: 2, letterSpacing: 0.2 },
 
   // CTA
+  ctaWrap: { borderRadius: 18, marginTop: 18, overflow: 'hidden' },
   ctaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderRadius: 18,
     padding: 16,
-    marginTop: 18,
-    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   ctaIcon: {
     width: 40, height: 40, borderRadius: 20,

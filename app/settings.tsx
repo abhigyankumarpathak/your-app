@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, DeviceEventEmitter, Image, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Avatar from '../components/Avatar';
 import ColorWheel from '../components/ColorWheel';
+import { accentGradient } from '../theme/design';
 import { useAuth } from '../context/AuthContext';
 import { useAppState } from '../context/AppStateContext';
 import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
@@ -1093,7 +1095,7 @@ export default function Settings() {
   if (activeSection) {
     return (
       <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-        <View style={[styles.detailHeader, { backgroundColor: accentColor }]}>
+        <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.detailHeader}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => setActiveSection(null)}
@@ -1103,7 +1105,7 @@ export default function Settings() {
           <Text style={[styles.detailTitle, { fontSize: fontSizes.heading }]}>
             {SECTION_TITLES[activeSection]}
           </Text>
-        </View>
+        </LinearGradient>
         <View style={styles.content}>
           {renderSection(activeSection)}
         </View>
@@ -1113,7 +1115,7 @@ export default function Settings() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
+      <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <View style={styles.headerInner}>
           <Avatar size={64} borderColor="rgba(255,255,255,0.6)" borderWidth={3} />
           <View style={{ flex: 1 }}>
@@ -1125,7 +1127,7 @@ export default function Settings() {
             </Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.content}>
         {groups.map((group) => (

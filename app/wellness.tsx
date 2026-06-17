@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
 import { notify } from '../services/dialog';
 import {
   getExerciseMinutesToday,
@@ -143,14 +145,14 @@ export default function Wellness() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: '#10B981' }]}>
+      <LinearGradient colors={accentGradient('#10B981')} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
           ❤️ Wellness Tracker
         </Text>
         <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
           Monitor sleep & screen time
         </Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.content}>
         {/* Quick Stats */}

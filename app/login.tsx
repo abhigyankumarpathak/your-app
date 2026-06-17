@@ -12,13 +12,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { isSupabaseConfigured } from '../services/supabase';
+import { accentGradient } from '../theme/design';
 
 type Mode = 'signIn' | 'signUp';
 
-export default function Login() {
+export type AuthOutcome = 'signIn' | 'signUp' | 'skip';
+
+export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => void } = {}) {
   const router = useRouter();
   const { accentColor, presetValues, fontSizes } = useTheme();
   const { signIn, signUp } = useAuth();
@@ -28,7 +32,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const goBack = () => {
+  // When mounted as a pre-onboarding gate, `onDone` advances the flow and
+  // reports the outcome so the caller can decide whether to run onboarding
+  // (existing users who sign in skip it). When reached as a route from
+  // Settings, fall back to navigation.
+  const finish = (outcome: AuthOutcome) => {
+    if (onDone) { onDone(outcome); return; }
     if (router.canGoBack()) router.back();
     else router.replace('/settings');
   };
@@ -61,7 +70,7 @@ export default function Login() {
         setPassword('');
         return;
       }
-      goBack();
+      finish(mode);
     } finally {
       setBusy(false);
     }
@@ -75,7 +84,7 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={[styles.header, { backgroundColor: accentColor }]}>
+        <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <Text style={[styles.headerTitle, { fontSize: fontSizes.heading }]}>
             {isSignIn ? 'Welcome back' : 'Create your account'}
           </Text>
@@ -84,7 +93,7 @@ export default function Login() {
               ? 'Sign in to sync your progress across devices.'
               : 'Save your progress so it follows you anywhere.'}
           </Text>
-        </View>
+        </LinearGradient>
 
         <View style={styles.content}>
           {!isSupabaseConfigured && (
@@ -164,7 +173,7 @@ export default function Login() {
                 </Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={goBack} style={styles.skip}>
+          <TouchableOpacity onPress={() => finish('skip')} style={styles.skip}>
             <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
               Maybe later — keep using this device only
             </Text>

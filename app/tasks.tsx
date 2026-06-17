@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
 import { cancelTaskDueAlert, scheduleTaskDueAlert } from '../services/notifications';
 
 type Priority = 'high' | 'medium' | 'low';
@@ -141,10 +143,10 @@ export default function Tasks() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]} keyboardShouldPersistTaps="handled">
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
+      <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>✓ Tasks</Text>
         <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>{tasks.filter((t) => !t.done).length} pending</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.content}>
         <TouchableOpacity style={[styles.addButton, { backgroundColor: accentColor }]} onPress={() => setShowForm(!showForm)}>

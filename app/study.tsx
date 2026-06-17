@@ -13,7 +13,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
 import { updateQuestProgress } from '../services/quests';
 import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
 
@@ -334,10 +336,10 @@ export default function Study() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]} keyboardShouldPersistTaps="handled">
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
+      <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>🎯 Focus Mode</Text>
         <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>Track your study sessions</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.content}>
         {/* Pomodoro toggle */}
@@ -363,7 +365,8 @@ export default function Study() {
         </View>
 
         {/* Timer display */}
-        <Animated.View style={[styles.timerSection, { backgroundColor: accentColor, transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={[styles.timerSection, { transform: [{ scale: scaleAnim }] }]}>
+          <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill as any} />
           <Text style={[styles.timer, { fontSize: fontSizes.heading + 20 }]}>{formatTime(seconds)}</Text>
           {pomoDisplay()}
           <Text style={[styles.timerLabel, { fontSize: fontSizes.base }]}>
@@ -540,7 +543,7 @@ const styles = StyleSheet.create({
   input: { borderRadius: 10, padding: 12, borderWidth: 1.5 },
   pomoToggle: { borderRadius: 20, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 8, marginTop: 16, alignSelf: 'flex-start' },
   pomoToggleText: { fontWeight: '700' },
-  timerSection: { borderRadius: 20, padding: 40, marginTop: 24, alignItems: 'center', justifyContent: 'center' },
+  timerSection: { borderRadius: 20, padding: 40, marginTop: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   timer: { fontWeight: '700', color: '#fff', fontFamily: 'monospace' },
   pomoLabel: { marginTop: 6, fontWeight: '600' },
   timerLabel: { color: 'rgba(255,255,255,0.9)', marginTop: 6, fontWeight: '500' },

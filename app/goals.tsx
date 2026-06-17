@@ -12,7 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'longterm';
 
@@ -260,7 +262,7 @@ export default function Goals() {
   return (
     <View style={[styles.root, { backgroundColor: presetValues.bg }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: accentColor }]}>
+      <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
           🎯 Goals
         </Text>
@@ -285,7 +287,7 @@ export default function Goals() {
             );
           })}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Period Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={styles.tabsContent}>

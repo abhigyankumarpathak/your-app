@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -12,11 +13,13 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { GlyphKey, LevelMedallion, QuestCrest } from '../components/art/GameIcons';
 import Confetti from '../components/Confetti';
 import StarCatchGame from '../components/StarCatchGame';
 import StudyPet from '../components/StudyPet';
 import { useTheme } from '../context/ThemeContext';
 import { QuestDisplay, getTodayQuestDisplays } from '../services/quests';
+import { TIER_COLORS, TIER_LABEL, accentGradient, alpha, elevation, glow, lighten } from '../theme/design';
 import {
   ALL_ACHIEVEMENTS,
   Achievement,
@@ -103,7 +106,8 @@ const DECO_PATTERNS: { t: 'pill' | 'diamond' | 'sparkle'; rx: number; ry: number
   [{ t: 'diamond', rx: 0.10, ry: 0.36 }, { t: 'sparkle', rx: 0.89, ry: 0.56 }, { t: 'pill',    rx: 0.07, ry: 0.76 }],
 ];
 
-const PATH_ICONS = ['🥚', '🐣', '📖', '⭐', '🚀', '🔥', '⚡', '💎', '🏆', '👑', '🌟'];
+const LEVEL_GLYPHS: GlyphKey[] = ['star', 'books', 'bolt', 'flame', 'gem', 'shield', 'brain', 'medal', 'crown', 'sparkle'];
+const glyphForLevel = (lvl: number): GlyphKey => LEVEL_GLYPHS[lvl % LEVEL_GLYPHS.length];
 
 // ── Geometric decoration shapes ──────────────────────────────────────────────
 function GeoDeco({ type, x, y, size, color }: { type: string; x: number; y: number; size: number; color: string }) {
@@ -242,7 +246,7 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
         const isPast    = nodeLevel < currentLevel;
         const isFuture  = nodeLevel > currentLevel;
         const nd        = isCurrent ? NODE_D_C : NODE_D;
-        const icon      = isFuture ? '🔒' : PATH_ICONS[Math.min(nodeLevel, PATH_ICONS.length - 1)];
+        const nodeState = isPast ? 'past' : isCurrent ? 'current' : 'future';
         const title     = LEVEL_TITLES[Math.min(nodeLevel, LEVEL_TITLES.length - 1)];
         const labelRight = fromLeft;
         const labelX     = labelRight ? ncx + nd / 2 + 10 : 0;
@@ -269,24 +273,17 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
                 borderWidth: 2, borderColor: accentColor + '40',
               }} />
             )}
-            {/* Node circle */}
+            {/* Node medallion */}
             <Animated.View style={[{
               position: 'absolute',
               left: ncx - nd / 2, top: ncy - nd / 2,
-              width: nd, height: nd, borderRadius: nd / 2,
-              backgroundColor: isFuture ? presetValues.bgSecondary
-                             : isPast   ? accentColor + 'CC'
-                             :            accentColor,
-              alignItems: 'center', justifyContent: 'center',
-              borderWidth: isCurrent ? 3 : 0, borderColor: '#fff',
-              shadowColor: isCurrent ? accentColor : isPast ? accentColor : 'transparent',
-              shadowOpacity: isCurrent ? 0.6 : isPast ? 0.2 : 0,
-              shadowRadius: isCurrent ? 14 : 4,
-              elevation: isCurrent ? 10 : isPast ? 3 : 0,
             }, isCurrent && { transform: [{ scale: pulseAnim }] }]}>
-              <Text style={{ fontSize: isCurrent ? 28 : 22, opacity: isFuture ? 0.3 : 1 }}>
-                {isPast ? '✅' : icon}
-              </Text>
+              <LevelMedallion
+                size={nd}
+                color={accentColor}
+                glyph={glyphForLevel(nodeLevel)}
+                state={nodeState as 'past' | 'current' | 'future'}
+              />
             </Animated.View>
             {/* Label — sits above the path stroke so the line doesn't bisect it */}
             <View style={{
@@ -460,10 +457,11 @@ export default function GameScreen() {
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero header ──────────────────────────────────────────────────── */}
-      <View style={[styles.hero, { backgroundColor: accentColor }]}>
+      <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
         {/* Decorative blobs */}
-        <View style={[styles.heroBlob, { top: -50, left: -30, width: 160, height: 160, backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-        <View style={[styles.heroBlob, { bottom: -40, right: -40, width: 180, height: 180, backgroundColor: 'rgba(255,255,255,0.10)' }]} />
+        <View style={[styles.heroBlob, { top: -50, left: -30, width: 160, height: 160, backgroundColor: 'rgba(255,255,255,0.10)' }]} />
+        <View style={[styles.heroBlob, { bottom: -40, right: -40, width: 180, height: 180, backgroundColor: 'rgba(255,255,255,0.12)' }]} />
+        <View style={[styles.heroBlob, { top: 40, right: 30, width: 70, height: 70, backgroundColor: 'rgba(255,255,255,0.07)' }]} />
         <Animated.View style={{ opacity: headerAnim, transform: [{ scale: headerAnim }], alignItems: 'center' }}>
           <XPRing pct={pct} size={120} color="#fff" level={level} />
           <Text style={[styles.heroTitle, { fontSize: fontSizes.heading + 2 }]}>{title}</Text>
@@ -494,7 +492,7 @@ export default function GameScreen() {
             </View>
           ))}
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.body}>
 
@@ -513,21 +511,28 @@ export default function GameScreen() {
           onPress={() => setShowStarGame(true)}
           disabled={starGamePlayedToday}
           style={[styles.minigameCard, {
-            backgroundColor: starGamePlayedToday ? presetValues.cardBg : accentColor,
-            borderColor: accentColor,
-          }]}
+            backgroundColor: starGamePlayedToday ? presetValues.cardBg : 'transparent',
+            borderColor: starGamePlayedToday ? presetValues.borderColor : alpha(accentColor, 0.6),
+          }, !starGamePlayedToday && elevation(2)]}
         >
+          {!starGamePlayedToday && (
+            <LinearGradient
+              colors={accentGradient(accentColor)}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill as any}
+            />
+          )}
           <View style={[styles.minigameIconBox, {
-            backgroundColor: starGamePlayedToday ? presetValues.bgSecondary : 'rgba(255,255,255,0.22)',
+            backgroundColor: starGamePlayedToday ? presetValues.bgSecondary : 'rgba(255,255,255,0.18)',
           }]}>
-            <Text style={{ fontSize: 36 }}>🌟</Text>
+            <QuestCrest glyph="star" color="#F4B528" size={48} />
           </View>
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={[styles.minigameTitle, {
               color: starGamePlayedToday ? presetValues.text : '#fff',
               fontSize: fontSizes.title,
             }]}>
-              ⭐ Star Catch
+              Star Catch
             </Text>
             <Text style={[styles.minigameSub, {
               color: starGamePlayedToday ? presetValues.textSecondary : 'rgba(255,255,255,0.85)',
@@ -561,10 +566,13 @@ export default function GameScreen() {
               { translateX: treasureAvailable ? chestShake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] }) : 0 },
             ],
           }}>
-            <View style={[styles.treasureBubble, { backgroundColor: treasureAvailable ? accentColor : presetValues.bgSecondary }]}>
-              <Text style={{ fontSize: 36 }}>
-                {treasureAvailable ? '🎁' : (treasure?.emoji || '✓')}
-              </Text>
+            <View style={[styles.treasureBubble, { backgroundColor: treasureAvailable ? alpha(accentColor, 0.16) : presetValues.bgSecondary }]}>
+              <QuestCrest
+                glyph="gem"
+                color={treasureAvailable ? '#F4B528' : '#9CA3AF'}
+                done={!treasureAvailable}
+                size={50}
+              />
             </View>
           </Animated.View>
           <View style={{ flex: 1, marginLeft: 14 }}>
@@ -600,38 +608,53 @@ export default function GameScreen() {
 
           {quests.map((quest) => {
             const barPct = quest.progress.total > 0 ? quest.progress.current / quest.progress.total : 0;
+            const tierColor = TIER_COLORS[quest.tier];
+            const pctLabel = Math.round(Math.min(barPct, 1) * 100);
             return (
               <View key={quest.id} style={[styles.questCard, {
-                backgroundColor: quest.completed ? accentColor + '12' : presetValues.bgSecondary,
-                borderColor: quest.completed ? accentColor + '60' : presetValues.borderColor,
-              }]}>
-                <View style={[styles.questIconBox, { backgroundColor: quest.completed ? accentColor : accentColor + '33' }]}>
-                  <Text style={{ fontSize: 22 }}>{quest.icon}</Text>
+                backgroundColor: quest.completed ? alpha(tierColor, 0.1) : presetValues.bgSecondary,
+                borderColor: quest.completed ? alpha(tierColor, 0.55) : presetValues.borderColor,
+              }, quest.completed && elevation(1)]}>
+                {/* Tier accent rail */}
+                <View style={[styles.questRail, { backgroundColor: tierColor }]} />
+
+                <View style={[glow(tierColor, quest.completed ? 2 : 1), { borderRadius: 14 }]}>
+                  <QuestCrest glyph={quest.art} color={tierColor} done={quest.completed} size={54} />
                 </View>
+
                 <View style={styles.questBody}>
                   <View style={styles.questTopRow}>
                     <Text style={[styles.questName, {
                       color: presetValues.text, fontSize: fontSizes.base,
-                      textDecorationLine: quest.completed ? 'line-through' : 'none',
-                      opacity: quest.completed ? 0.55 : 1,
-                    }]}>
+                      opacity: quest.completed ? 0.6 : 1,
+                    }]} numberOfLines={1}>
                       {quest.title}
                     </Text>
-                    <View style={[styles.xpChip, { backgroundColor: accentColor + '22' }]}>
-                      <Text style={[styles.xpChipText, { color: accentColor, fontSize: fontSizes.base - 2 }]}>+{quest.bonusXP} XP</Text>
+                    <View style={[styles.xpChip, { backgroundColor: alpha(tierColor, 0.16) }]}>
+                      <Text style={[styles.xpChipText, { color: tierColor, fontSize: fontSizes.base - 2 }]}>+{quest.bonusXP}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.questDesc2, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                    {quest.description}
-                  </Text>
-                  <View style={[styles.questTrack, { backgroundColor: presetValues.borderColor }]}>
-                    <View style={[styles.questFill, {
-                      width: `${Math.min(barPct * 100, 100)}%` as any,
-                      backgroundColor: quest.completed ? accentColor : accentColor + 'AA',
-                    }]} />
+
+                  <View style={styles.questMetaRow}>
+                    <View style={[styles.tierPill, { backgroundColor: alpha(tierColor, 0.16), borderColor: alpha(tierColor, 0.45) }]}>
+                      <Text style={[styles.tierPillText, { color: tierColor }]}>{TIER_LABEL[quest.tier].toUpperCase()}</Text>
+                    </View>
+                    <Text style={[styles.questDesc2, { color: presetValues.textSecondary, fontSize: fontSizes.base - 3 }]} numberOfLines={1}>
+                      {quest.description}
+                    </Text>
                   </View>
+
+                  <View style={[styles.questTrack, { backgroundColor: presetValues.borderColor }]}>
+                    <LinearGradient
+                      colors={[lighten(tierColor, 0.2), tierColor]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.questFill, { width: `${Math.min(barPct * 100, 100)}%` as any }]}
+                    />
+                  </View>
+                  <Text style={[styles.questProgressText, { color: quest.completed ? tierColor : presetValues.textSecondary }]}>
+                    {quest.completed ? '✓ Complete · reward claimed' : `${pctLabel}% complete`}
+                  </Text>
                 </View>
-                {quest.completed && <Text style={[styles.checkMark, { color: accentColor }]}>✓</Text>}
               </View>
             );
           })}
@@ -710,24 +733,23 @@ export default function GameScreen() {
                   activeOpacity={0.7}
                   onPress={() => setSelectedAch(ach)}
                   style={[styles.badge, {
-                    backgroundColor: isEarned ? rarityColor + '18' : presetValues.bgSecondary,
+                    backgroundColor: isEarned ? alpha(rarityColor, 0.1) : presetValues.bgSecondary,
                     borderColor: isEarned ? rarityColor : presetValues.borderColor,
                     borderWidth: isEarned ? 1.5 : 1,
-                  }]}
+                  }, isEarned && elevation(1)]}
                 >
-                  <Text style={[styles.badgeIcon, { opacity: isEarned ? 1 : 0.25 }]}>{ach.icon}</Text>
+                  <View style={isEarned ? glow(rarityColor, 1) : undefined}>
+                    <QuestCrest glyph={ach.art} color={rarityColor} size={46} locked={!isEarned} />
+                  </View>
                   <Text style={[styles.badgeLabel, {
                     color: isEarned ? presetValues.text : presetValues.textSecondary,
                     fontSize: fontSizes.base - 3,
-                    opacity: isEarned ? 1 : 0.5,
+                    opacity: isEarned ? 1 : 0.6,
                   }]} numberOfLines={2}>
                     {ach.label}
                   </Text>
                   {isEarned && (
                     <View style={[styles.rarityDot, { backgroundColor: rarityColor }]} />
-                  )}
-                  {!isEarned && (
-                    <Text style={[styles.lockIcon, { color: presetValues.borderColor }]}>🔒</Text>
                   )}
                 </TouchableOpacity>
               );
@@ -826,12 +848,9 @@ export default function GameScreen() {
                 onPress={() => {}}
                 style={[styles.modalSheet, { backgroundColor: presetValues.cardBg }]}
               >
-                {/* Icon circle */}
-                <View style={[styles.modalIconCircle, {
-                  backgroundColor: isEarned ? rarityColor + '22' : presetValues.bgSecondary,
-                  borderColor: isEarned ? rarityColor : presetValues.borderColor,
-                }]}>
-                  <Text style={[styles.modalIcon, { opacity: isEarned ? 1 : 0.3 }]}>{selectedAch.icon}</Text>
+                {/* Crest */}
+                <View style={[isEarned ? glow(rarityColor, 2) : undefined, { marginBottom: 6 }]}>
+                  <QuestCrest glyph={selectedAch.art} color={rarityColor} size={96} locked={!isEarned} />
                 </View>
 
                 {/* Title + rarity */}
@@ -968,17 +987,20 @@ const styles = StyleSheet.create({
   // Quests
   questDonePill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   questDoneText: { fontWeight: '700' },
-  questCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 12, marginBottom: 10, borderWidth: 1.5, gap: 10 },
-  questIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  questBody: { flex: 1, gap: 4 },
+  questCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 12, paddingLeft: 18, marginBottom: 10, borderWidth: 1.5, gap: 12, position: 'relative', overflow: 'hidden' },
+  questRail: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
+  questBody: { flex: 1, gap: 5 },
   questTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  questName: { fontWeight: '700', flex: 1, marginRight: 6 },
-  questDesc2: { fontWeight: '500' },
-  questTrack: { height: 5, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
-  questFill: { height: '100%', borderRadius: 3 },
-  xpChip: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
-  xpChipText: { fontWeight: '700' },
-  checkMark: { fontWeight: '900', fontSize: 22 },
+  questName: { fontWeight: '800', flex: 1, marginRight: 6 },
+  questMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  tierPill: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1.5 },
+  tierPillText: { fontWeight: '900', fontSize: 9, letterSpacing: 0.7 },
+  questDesc2: { fontWeight: '500', flex: 1 },
+  questTrack: { height: 7, borderRadius: 4, overflow: 'hidden', marginTop: 2 },
+  questFill: { height: '100%', borderRadius: 4 },
+  questProgressText: { fontWeight: '700', fontSize: 10.5 },
+  xpChip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row', alignItems: 'center' },
+  xpChipText: { fontWeight: '900' },
 
   // Level path
   pathContainer: { paddingTop: 4 },

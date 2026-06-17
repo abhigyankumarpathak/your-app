@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { accentGradient } from '../theme/design';
 
 function WeekBar({ day, hours, max, accent }: { day: string; hours: number; max: number; accent: string }) {
   const { presetValues, fontSizes } = useTheme();
@@ -116,14 +118,14 @@ export default function ScreenTime() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
-      <View style={[styles.header, { backgroundColor: '#8B5CF6' }]}>
+      <LinearGradient colors={accentGradient('#8B5CF6')} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <Text style={[styles.headerTitle, { fontSize: fontSizes.heading, color: '#fff' }]}>
           📱 Screen Time
         </Text>
         <Text style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.85)' }]}>
           Track your daily device usage
         </Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.content}>
         {Platform.OS === 'ios' && (
