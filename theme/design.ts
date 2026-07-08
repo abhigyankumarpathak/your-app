@@ -89,6 +89,23 @@ export function tintGradient(accent: string): [string, string] {
   return [alpha(accent, 0.16), alpha(accent, 0.04)];
 }
 
+// ── Shared screen header ─────────────────────────────────────────────────────
+// One rounded, softly-elevated gradient header for every feature screen so they
+// all match the dashboard hero instead of each rolling their own flat bar.
+export const screenHeader: ViewStyle = {
+  paddingTop: 44,
+  paddingBottom: space.xxl,
+  paddingHorizontal: space.xl,
+  borderBottomLeftRadius: radius.xl + 4,
+  borderBottomRightRadius: radius.xl + 4,
+  overflow: 'hidden',
+  shadowColor: '#000',
+  shadowOpacity: 0.14,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 6 },
+  elevation: 6,
+};
+
 // ── Elevation presets (cross-platform) ──────────────────────────────────────
 export function elevation(level: 1 | 2 | 3 | 4, color = '#000000'): ViewStyle {
   const map = {

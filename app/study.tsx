@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient } from '../theme/design';
+import { accentGradient, screenHeader } from '../theme/design';
 import { updateQuestProgress } from '../services/quests';
 import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
 
@@ -533,7 +533,7 @@ export default function Study() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 40, paddingBottom: 30, paddingHorizontal: 20 },
+  header: screenHeader,
   headerTitle: { fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },

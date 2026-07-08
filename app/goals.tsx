@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient } from '../theme/design';
+import { accentGradient, screenHeader } from '../theme/design';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'longterm';
 
@@ -645,7 +645,7 @@ function DetailModal({ goal, color, presetValues, fontSizes, onClose, linkedTask
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { paddingTop: 40, paddingBottom: 16, paddingHorizontal: 20 },
+  header: screenHeader,
   headerTitle: { fontWeight: 'bold', marginBottom: 2 },
   headerSub: { fontSize: 14, fontWeight: '500', marginBottom: 12 },
   statsRow: { flexDirection: 'row', gap: 20 },
