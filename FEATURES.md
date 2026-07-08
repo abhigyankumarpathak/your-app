@@ -1,6 +1,6 @@
 # Focus App — Feature Reference
 
-*Last updated: 2026-06-09*
+*Last updated: 2026-07-08*
 
 ---
 
@@ -16,7 +16,20 @@
 | Wellness | `/wellness` | Sleep and mood logging |
 | Screen Time | `/screentime` | Manual screen time tracking |
 | Quests & Levels | `/game` | Duolingo-style level path, daily quests, achievement grid |
-| Settings | `/settings` | Appearance and notification preferences |
+| Settings | `/settings` | Appearance, notifications, and account/sync |
+| Login | `/login` | Email/password sign in & sign up (also the pre-onboarding auth gate) |
+
+---
+
+## Launch Flow
+
+The root layout ([app/_layout.tsx](app/_layout.tsx)) gates the app in three stages:
+
+1. **Auth** — if there is no Supabase session, the [Login](app/login.tsx) screen is shown first. Users can sign in, sign up, or tap **"Maybe later"** to skip and use the device locally. Existing users who *sign in* skip onboarding (they've already done it); sign-up and "maybe later" fall through to onboarding.
+2. **Onboarding** — the 7-step carousel below, on first launch / after sign-up / after a reset.
+3. **The app** — the drawer navigator.
+
+While the Supabase SDK restores a saved session from storage, a loading spinner is shown so the login gate doesn't flash on every reload.
 
 ---
 
@@ -239,6 +252,29 @@ Android uses a notification channel named "Focus Reminders" with MAX importance 
 
 ---
 
+## Accounts & Cloud Sync
+
+Optional email/password accounts back a cross-device progress sync, powered by Supabase (`@supabase/supabase-js`). The whole system degrades gracefully — if Supabase keys aren't configured, the Login screen shows a warning and the app runs fully local.
+
+### Auth ([context/AuthContext.tsx](context/AuthContext.tsx), [services/supabase.ts](services/supabase.ts))
+- **Sign in / Sign up** with email + password (min 6 chars). If Supabase email confirmations are on, sign-up shows a "check your email" prompt and returns the user to Sign In.
+- **Session persistence** — the SDK restores sessions from storage across launches; `onAuthStateChange` keeps context state in sync.
+- **"Maybe later"** skip lets users run the app without an account.
+- Supabase config is read from `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (see README / `.env.example`). `isSupabaseConfigured` / `getSupabase()` return null when unset so nothing crashes.
+
+### Sync ([services/sync.ts](services/sync.ts))
+- Local progress is serialized into a single blob and stored in a Supabase `progress` table (`{ user_id, data, updated_at }`, upserted on `user_id`).
+- **On sign-in** (`onSignedInSync`): if a cloud row exists it is pulled down (other device wins); if not, the device's existing local progress is pushed up so nothing is lost.
+- **Push** (`pushLocalToCloud`) and **pull** (`pullCloudToLocal`) can be triggered manually from Settings, and a push runs on sign-out.
+- After a pull, a `CLOUD_PULLED` device event tells caches (theme, profile, …) to re-read `AsyncStorage` so the UI reflects synced values immediately.
+- `SYNCED_KEYS` covers user data (profile, sessions, tasks, activities, wellness, goals, theme, avatar, streak, XP, achievements, quests, treasure, onboarding flag). Device-specific keys (notification IDs, permission cache, mini-game dates) are intentionally **excluded**.
+- Last successful sync time is stored in `focusLastSyncedAt`.
+
+### Settings → Account & Sync
+Shows the signed-in email, last-synced timestamp, and **Sync Now** / **Pull from Cloud** / **Sign Out** actions. Sign-out confirms first and pushes local changes before tearing down the session.
+
+---
+
 ## Theme System
 
 Configured in Settings, persisted via `ThemeContext`.
@@ -323,6 +359,20 @@ Pure-RN confetti burst ([components/Confetti.tsx](components/Confetti.tsx)) fire
 
 ---
 
+## Design System & UI Consistency
+
+A shared design system ([theme/design.ts](theme/design.ts)) is the single source of truth so the whole app reads as one product rather than a pile of ad-hoc styles.
+
+- **Spacing scale** (`space`) on a 4pt grid, and a **corner-radius scale** (`radius`).
+- **Color math** driven off the user's chosen accent: `mix` / `lighten` / `darken` / `alpha`, `luminance` + `readableOn` for picking legible text on any surface, and `accentGradient` / `tintGradient` for cohesive gradients.
+- **Cross-platform elevation** presets (`elevation(1–4)`) and colored **`glow`** for active/game elements.
+- **Shared screen header** (`screenHeader`) — one rounded, softly-elevated gradient header applied across the feature screens (Study, Tasks, Wellness, Screen Time, Goals) so they all match the Dashboard hero instead of each rolling their own flat bar.
+- **Tier / rarity system** (`TIER_COLORS`, `TIER_LABEL`) shared by quests, badges, and treasures.
+
+Everything is recomputed from the live accent color, so changing the theme in Settings restyles the whole app instantly.
+
+---
+
 ## Platform Support
 
 - iOS 13.0+ and Android 8.0+
@@ -334,7 +384,7 @@ Pure-RN confetti burst ([components/Confetti.tsx](components/Confetti.tsx)) fire
 
 ## Data Storage
 
-All data is stored locally via `AsyncStorage`. No cloud sync.
+All data is stored locally via `AsyncStorage`. When the user signs in, the user-owned keys (see `SYNCED_KEYS` in [services/sync.ts](services/sync.ts)) are mirrored to Supabase for cross-device sync; device-specific keys stay local only.
 
 | Key | Contents |
 |-----|----------|
@@ -342,8 +392,10 @@ All data is stored locally via `AsyncStorage`. No cloud sync.
 | `focusOnboardingComplete` | Boolean flag |
 | `focusSessions` | Array of study sessions |
 | `focusTasks` | Array of tasks |
+| `focusActivities` | Array of weekly schedule activities |
 | `focusWellness` | Array of wellness logs |
 | `focusGoals` | Array of SMART goals |
+| `focusPomodoroEnabled` | Pomodoro mode toggle |
 | `focusStreak` | Current/longest streak and last date |
 | `focusXP` | Total XP integer |
 | `focusAchievements` | Array of earned achievement IDs |
@@ -358,6 +410,7 @@ All data is stored locally via `AsyncStorage`. No cloud sync.
 | `focusAvatarBg` | Avatar background color hex |
 | `focusAvatarImage` | URI of user's camera-roll profile picture (or null) |
 | `focusStarGameDate` | Last day the Star Catch mini-game was played (YYYY-M-D) |
+| `focusLastSyncedAt` | ISO timestamp of the last successful cloud sync |
 | `focusStudyReminderId` | Scheduled notification ID |
 | `focusBedtimeReminderId` | Scheduled notification ID |
 | `focusStreakReminderId` | Scheduled notification ID |
