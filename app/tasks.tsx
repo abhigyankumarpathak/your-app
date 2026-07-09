@@ -5,7 +5,8 @@ import { useCallback, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient, screenHeader } from '../theme/design';
+import EmptyState from '../components/EmptyState';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 import { cancelTaskDueAlert, scheduleTaskDueAlert } from '../services/notifications';
 
 type Priority = 'high' | 'medium' | 'low';
@@ -241,10 +242,7 @@ export default function Tasks() {
         )}
 
         {tasks.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyIcon, { fontSize: fontSizes.heading + 20 }]}>📝</Text>
-            <Text style={[styles.emptyText, { color: presetValues.textSecondary, fontSize: fontSizes.base }]}>No tasks yet. Create one to get started!</Text>
-          </View>
+          <EmptyState icon="📝" text="No tasks yet. Create one to get started!" />
         )}
       </View>
     </ScrollView>
@@ -257,9 +255,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
-  addButton: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 16, marginTop: 16, justifyContent: 'center' },
+  addButton: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: radius.md, marginBottom: 16, marginTop: 16, justifyContent: 'center' },
   addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 8 },
-  form: { borderRadius: 12, padding: 16, marginBottom: 16 },
+  form: { borderRadius: radius.lg, padding: 16, marginBottom: 16, ...elevation(1) },
   input: { borderRadius: 8, padding: 12, marginBottom: 10, borderWidth: 1 },
   fieldLabel: { fontWeight: '600', marginBottom: 6 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
@@ -270,7 +268,7 @@ const styles = StyleSheet.create({
   saveButton: { padding: 12, borderRadius: 8, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontWeight: '600' },
   sectionTitle: { fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  taskCard: { borderRadius: 10, padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', borderLeftWidth: 4, borderBottomWidth: 0.5 },
+  taskCard: { borderRadius: radius.md, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', borderLeftWidth: 4, ...elevation(1) },
   taskLeft: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
   taskTitle: { fontWeight: '500' },
   taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3 },
@@ -279,7 +277,4 @@ const styles = StyleSheet.create({
   goalBadge: { fontWeight: '600', borderWidth: 1, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
   dueTag: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, marginTop: 4, alignSelf: 'flex-start' },
   dueTagText: { fontWeight: '600' },
-  emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 20 },
-  emptyIcon: { marginBottom: 16 },
-  emptyText: { fontWeight: '500', textAlign: 'center' },
 });

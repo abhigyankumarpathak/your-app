@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient, screenHeader } from '../theme/design';
+import EmptyState from '../components/EmptyState';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 import { updateQuestProgress } from '../services/quests';
 import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
 
@@ -482,12 +483,7 @@ export default function Study() {
             ))}
           </View>
         ) : !running && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🎓</Text>
-            <Text style={[styles.emptyText, { color: presetValues.textSecondary, fontSize: fontSizes.base }]}>
-              Start a session or log a past one to see your progress!
-            </Text>
-          </View>
+          <EmptyState icon="🎓" text="Start a session or log a past one to see your progress!" />
         )}
       </View>
 
@@ -537,7 +533,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
-  section: { borderRadius: 14, padding: 16, marginTop: 20, borderWidth: 1 },
+  section: { borderRadius: radius.lg, padding: 16, marginTop: 20, borderWidth: 1, ...elevation(1) },
   label: { fontWeight: '600', marginBottom: 12 },
   fieldLabel: { fontWeight: '600', marginBottom: 4 },
   input: { borderRadius: 10, padding: 12, borderWidth: 1.5 },
@@ -556,20 +552,17 @@ const styles = StyleSheet.create({
   chipText: { fontWeight: '600' },
   durationRow: { flexDirection: 'row', gap: 10 },
   statsGrid: { flexDirection: 'row', gap: 12, marginTop: 24 },
-  statCard: { flex: 1, borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1 },
+  statCard: { flex: 1, borderRadius: radius.md, padding: 16, alignItems: 'center', borderWidth: 1, ...elevation(1) },
   statValue: { fontWeight: '700', marginBottom: 4 },
   statLabel: { fontWeight: '500', textAlign: 'center' },
   dateHeader: { fontWeight: '700', marginBottom: 6, marginLeft: 2 },
-  sessionCard: { borderRadius: 10, padding: 12, marginBottom: 8, borderLeftWidth: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sessionCard: { borderRadius: radius.md, padding: 12, marginBottom: 10, borderLeftWidth: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...elevation(1) },
   sessionInfo: { flex: 1, gap: 3 },
   sessionSubject: { fontWeight: '600' },
   sessionDuration: { fontWeight: '500' },
   sessionNotes: { fontWeight: '500', fontStyle: 'italic' },
   editBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   editBtnText: { fontWeight: '700' },
-  emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 20 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontWeight: '500', textAlign: 'center' },
   xpToast: { position: 'absolute', bottom: 50, alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
   xpToastText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

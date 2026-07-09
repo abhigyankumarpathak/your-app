@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient, screenHeader } from '../theme/design';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 import { notify } from '../services/dialog';
 import {
   getExerciseMinutesToday,
@@ -507,10 +507,10 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
   statsGrid: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  statCard: { flex: 1, borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1 },
+  statCard: { flex: 1, borderRadius: radius.md, padding: 16, alignItems: 'center', borderWidth: 1, ...elevation(1) },
   statValue: { fontWeight: '700', marginBottom: 4 },
   statLabel: { fontWeight: '500' },
-  form: { borderRadius: 14, padding: 16, marginTop: 20, borderWidth: 1 },
+  form: { borderRadius: radius.lg, padding: 16, marginTop: 20, borderWidth: 1, ...elevation(1) },
   formTitle: { fontWeight: '600', marginBottom: 16 },
   healthSyncBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
   healthTodayLabel: { fontWeight: '500' },
   workoutsList: { marginTop: 12 },
   workoutsTitle: { fontWeight: '600', marginBottom: 8 },
-  workoutRow: { borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1 },
+  workoutRow: { borderRadius: radius.md, padding: 12, marginBottom: 8, borderWidth: 1 },
   workoutName: { fontWeight: '600', marginBottom: 2 },
   workoutMeta: { fontWeight: '500' },
   label: { fontWeight: '500', marginBottom: 6 },
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: '600' },
   logsSection: { marginTop: 20 },
   logsTitle: { fontWeight: '600', marginBottom: 12 },
-  logCard: { borderRadius: 10, padding: 14, marginBottom: 10, borderWidth: 1 },
+  logCard: { borderRadius: radius.md, padding: 14, marginBottom: 10, borderWidth: 1, ...elevation(1) },
   logHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   logDate: { fontWeight: '600' },
   logMood: { fontWeight: '700' },

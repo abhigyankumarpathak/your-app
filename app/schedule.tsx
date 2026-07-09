@@ -5,6 +5,8 @@ import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import EmptyState from '../components/EmptyState';
+import { elevation, radius } from '../theme/design';
 import { checkCalendarPermission } from '../services/permissions';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -261,12 +263,7 @@ export default function Schedule() {
         </View>
 
         {!hasAnything && (
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
-            <Text style={[styles.emptyText, { color: presetValues.textSecondary, fontSize: fontSizes.base }]}>
-              Your week is wide open. Add activities or grant calendar access to see events here.
-            </Text>
-          </View>
+          <EmptyState icon="📅" text="Your week is wide open. Add activities or grant calendar access to see events here." />
         )}
 
       </View>
@@ -280,19 +277,19 @@ const styles = StyleSheet.create({
   headerTitle: { fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 },
-  section: { borderRadius: 14, padding: 16, marginTop: 14 },
+  section: { borderRadius: radius.lg, padding: 16, marginTop: 14, ...elevation(1) },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontWeight: '700' },
   dayLabel: { fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 14, marginBottom: 6 },
   // Calendar events
-  eventCard: { borderRadius: 10, padding: 12, marginBottom: 8, borderLeftWidth: 3 },
+  eventCard: { borderRadius: radius.md, padding: 12, marginBottom: 8, borderLeftWidth: 3 },
   eventTitle: { fontWeight: '600', marginBottom: 2 },
   eventTime: { fontWeight: '500' },
   eventLocation: { fontWeight: '500', marginTop: 2 },
   // Manual activities
   addButton: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, justifyContent: 'center', marginBottom: 12 },
   addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
-  form: { borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1 },
+  form: { borderRadius: radius.md, padding: 14, marginBottom: 12, borderWidth: 1 },
   input: { borderRadius: 8, padding: 11, marginBottom: 10, borderWidth: 1 },
   label: { fontWeight: '500', marginBottom: 8 },
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
@@ -300,10 +297,8 @@ const styles = StyleSheet.create({
   dayText: { fontWeight: '600' },
   saveButton: { padding: 12, borderRadius: 8, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontWeight: '600' },
-  activityCard: { borderRadius: 10, padding: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1 },
+  activityCard: { borderRadius: radius.md, padding: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1 },
   activityName: { fontWeight: '600' },
   activityTime: { marginTop: 2 },
   emptyNote: { fontWeight: '500', lineHeight: 20 },
-  emptyState: { alignItems: 'center', marginTop: 40, paddingHorizontal: 20 },
-  emptyText: { fontWeight: '500', textAlign: 'center', lineHeight: 22 },
 });

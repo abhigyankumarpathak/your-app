@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient, screenHeader } from '../theme/design';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 
 function WeekBar({ day, hours, max, accent }: { day: string; hours: number; max: number; accent: string }) {
   const { presetValues, fontSizes } = useTheme();
@@ -254,17 +254,17 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, fontWeight: '500' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  statCard: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1 },
+  statCard: { flex: 1, borderRadius: radius.md, padding: 14, alignItems: 'center', borderWidth: 1, ...elevation(1) },
   statValue: { fontWeight: '700', marginBottom: 4 },
   statLabel: { fontWeight: '500', textAlign: 'center' },
-  iosNotice: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  iosNotice: { padding: 14, borderRadius: radius.md, borderWidth: 1, marginBottom: 16 },
   iosNoticeTitle: { fontWeight: '700', marginBottom: 6 },
   iosNoticeText: { lineHeight: 19, marginBottom: 10 },
   iosNoticeBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, alignSelf: 'flex-start' },
   iosNoticeBtnText: { fontWeight: '700' },
   statusBadge: { borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, alignItems: 'center' },
   statusText: { fontWeight: '600' },
-  card: { borderRadius: 14, padding: 16, marginTop: 16, borderWidth: 1 },
+  card: { borderRadius: radius.lg, padding: 16, marginTop: 16, borderWidth: 1, ...elevation(1) },
   cardTitle: { fontWeight: '600', marginBottom: 12 },
   barsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 100 },
   barCol: { flex: 1, alignItems: 'center', gap: 4 },
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, borderRadius: 8, padding: 12, borderWidth: 1 },
   saveBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
   saveBtnText: { color: '#fff', fontWeight: '600' },
-  deviceCard: { borderRadius: 14, padding: 16, marginTop: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  deviceCard: { borderRadius: radius.lg, padding: 16, marginTop: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...elevation(1) },
   deviceTitle: { fontWeight: '600', marginBottom: 4 },
   deviceSub: { fontWeight: '500' },
   tip: { marginBottom: 8, fontWeight: '500', lineHeight: 20 },

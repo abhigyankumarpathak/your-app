@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { accentGradient, screenHeader } from '../theme/design';
+import EmptyState from '../components/EmptyState';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'longterm';
 
@@ -367,18 +368,13 @@ export default function Goals() {
         )}
 
         {tabGoals.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>{cfg.icon}</Text>
-            <Text style={[styles.emptyTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>No {cfg.label.toLowerCase()} goals yet</Text>
-            <Text style={[styles.emptyText, { color: presetValues.textSecondary, fontSize: fontSizes.base }]}>
-              Tap above to set your first SMART goal
-            </Text>
-            {activeTab === 'longterm' && (
-              <Text style={[styles.emptyHint, { color: cfg.color }]}>
-                💡 Perfect for competitions, projects & big ambitions!
-              </Text>
-            )}
-          </View>
+          <EmptyState
+            icon={cfg.icon}
+            title={`No ${cfg.label.toLowerCase()} goals yet`}
+            text="Tap above to set your first SMART goal"
+            hint={activeTab === 'longterm' ? '💡 Perfect for competitions, projects & big ambitions!' : undefined}
+            hintColor={cfg.color}
+          />
         )}
       </ScrollView>
 
@@ -666,7 +662,7 @@ const styles = StyleSheet.create({
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, marginBottom: 16, gap: 8 },
   addBtnText: { color: '#fff', fontWeight: '700' },
   sectionHead: { fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  card: { borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderLeftWidth: 4 },
+  card: { borderRadius: radius.lg, padding: 14, marginBottom: 12, borderWidth: 1, borderLeftWidth: 4, ...elevation(1) },
   cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cardBody: { flex: 1 },
   cardTitle: { fontWeight: '600', marginBottom: 4 },
@@ -678,12 +674,6 @@ const styles = StyleSheet.create({
   progPct: { fontWeight: '600', marginRight: 4 },
   progBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
   progBtnTxt: { fontSize: 11, fontWeight: '700' },
-  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, gap: 10 },
-  emptyIcon: { fontSize: 60 },
-  emptyTitle: { fontWeight: '700', textAlign: 'center' },
-  emptyText: { textAlign: 'center', fontWeight: '500' },
-  emptyHint: { textAlign: 'center', fontWeight: '600', marginTop: 8, fontSize: 13 },
-
   modal: { flex: 1 },
   modalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1 },
   modalCancel: { fontSize: 16, fontWeight: '500' },
