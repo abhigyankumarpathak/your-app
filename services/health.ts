@@ -1,8 +1,15 @@
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
-/** HealthKit is iOS-only — on web and Android we short-circuit so the rest of
- *  the app keeps working without touching the native module. */
-export const isHealthAvailable = (): boolean => Platform.OS === 'ios';
+// The native HealthKit module (NitroModules) isn't bundled into Expo Go, so
+// even requiring it there throws. Detect Expo Go and treat Health as
+// unavailable — it only works in a native dev/production build.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+/** HealthKit is iOS-only, and only in a native build — on web, Android, and
+ *  inside Expo Go we short-circuit so the rest of the app keeps working
+ *  without touching the native module. */
+export const isHealthAvailable = (): boolean => Platform.OS === 'ios' && !isExpoGo;
 
 // Lazy require so the native module never loads on web or Android.
 type HK = typeof import('@kingstinct/react-native-healthkit');
