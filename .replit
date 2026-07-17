@@ -11,7 +11,6 @@ EXPO_NO_TELEMETRY = "1"
 # Metro needs more headroom than Replit's default heap for a ~1500-module bundle.
 NODE_OPTIONS = "--max-old-space-size=4096"
 
-# Expo/Metro binds 0.0.0.0 already; this maps it to the public URL.
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -40,3 +39,9 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run build:web && npm run serve:web"
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_LWp2m2zBSEEwHi1eS8xjVg_UI6mjP0d"
+EXPO_PUBLIC_SUPABASE_URL = "https://dfidtzpinjqrpujthtpz.supabase.co"
