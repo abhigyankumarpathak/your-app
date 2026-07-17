@@ -1,6 +1,6 @@
 # Focus App — Feature Reference
 
-*Last updated: 2026-07-08*
+*Last updated: 2026-07-17*
 
 ---
 
@@ -130,18 +130,20 @@ Powered by `services/quests.ts`. 3 quests are selected each day from a pool of 1
 
 Completing a quest awards bonus XP instantly. Each quest can only be completed once per day.
 
-| ID | Icon | Title | Description | Bonus XP |
-|----|------|-------|-------------|----------|
-| `study_starter` | 🎯 | Study Starter | Log 1 session today | +10 |
-| `double_session` | 🔁 | Double Down | Log 2 sessions today | +20 |
-| `triple_session` | 🎰 | Triple Threat | Log 3 sessions today | +35 |
-| `subject_hopper` | 🌀 | Subject Hopper | Study 2 different subjects today | +25 |
-| `multi_scholar` | 🌈 | Multi-Scholar | Study 3 different subjects today | +40 |
-| `focus_block` | ⚡ | Focus Block | Study 30+ min in one session | +30 |
-| `deep_focus` | 🧠 | Deep Focus | Study 1+ hour in one session | +50 |
-| `hour_hero` | 🦸 | Hour Hero | Study 1+ hour total today | +40 |
-| `note_taker` | 📝 | Note Taker | Add notes to a session | +15 |
-| `goal_crusher` | 🏅 | Goal Crusher | Hit your daily study goal | +50 |
+Each quest renders as a **custom SVG quest crest** (`QuestCrest`, a gradient shield framing a white glyph — see [Custom Vector Art](#custom-vector-art)) rather than a flat emoji. The `art` column below is the crest glyph key.
+
+| ID | Art | Title | Description | Bonus XP |
+|----|-----|-------|-------------|----------|
+| `study_starter` | `target` | Study Starter | Log 1 session today | +10 |
+| `double_session` | `swords` | Double Down | Log 2 sessions today | +20 |
+| `triple_session` | `dice` | Triple Threat | Log 3 sessions today | +35 |
+| `subject_hopper` | `swap` | Subject Hopper | Study 2 different subjects today | +25 |
+| `multi_scholar` | `books` | Multi-Scholar | Study 3 different subjects today | +40 |
+| `focus_block` | `bolt` | Focus Block | Study 30+ min in one session | +30 |
+| `deep_focus` | `brain` | Deep Focus | Study 1+ hour in one session | +50 |
+| `hour_hero` | `shield` | Hour Hero | Study 1+ hour total today | +40 |
+| `note_taker` | `scroll` | Note Taker | Add notes to a session | +15 |
+| `goal_crusher` | `medal` | Goal Crusher | Hit your daily study goal | +50 |
 
 Quest state stored in `focusDailyQuests` key (`{ date, questIds, completedIds }`).
 
@@ -149,17 +151,49 @@ Dashboard shows a collapsible **Daily Quests** card (between achievements shelf 
 
 Session save toast now shows total XP (session + quest bonus), badge count, quest count, and level-up message when applicable.
 
-### Achievements (7 total)
+### Achievements (20 total)
 
-| ID | Icon | Label | Condition |
-|----|------|-------|-----------|
-| `first_session` | 🎓 | First Session | Complete 1 session |
-| `streak_3` | 🔥 | 3-Day Streak | 3 consecutive study days |
-| `streak_7` | ⚡ | 7-Day Streak | 7 consecutive study days |
-| `marathon` | 📚 | Marathon | 3+ hours studied in one day |
-| `century` | 🏆 | Century | 100 total sessions |
-| `well_rounded` | 🌈 | Well-Rounded | 5+ distinct subjects studied |
-| `perfect_day` | ✅ | Perfect Day | Hit daily study goal |
+Defined in `services/streaks.ts`, grouped into four **categories** (Streak, Sessions, Time, Mastery) and four **rarity tiers** (Common, Rare, Epic, Legendary — colored by the shared `TIER_COLORS`). Each badge renders as a rarity-colored **SVG crest** (`QuestCrest`, see [Custom Vector Art](#custom-vector-art)); locked badges appear dimmed. The Game screen shows the full grid and a detail modal on tap; the Dashboard shows the recently-earned shelf.
+
+**Streak**
+
+| ID | Art | Label | Condition | Rarity |
+|----|-----|-------|-----------|--------|
+| `streak_3` | `flame` | 3-Day Streak | Study 3 days in a row | Common |
+| `streak_7` | `bolt` | Week Warrior | Study 7 days in a row | Rare |
+| `streak_14` | `moon` | Two-Week Titan | Study 14 days in a row | Epic |
+| `streak_30` | `crown` | Monthly Master | Study 30 days in a row | Legendary |
+
+**Sessions**
+
+| ID | Art | Label | Condition | Rarity |
+|----|-----|-------|-----------|--------|
+| `first_session` | `star` | First Step | Complete your first session | Common |
+| `sessions_10` | `star` | Getting Going | Complete 10 sessions | Common |
+| `sessions_25` | `sparkle` | Committed | Complete 25 sessions | Rare |
+| `sessions_50` | `gem` | Dedicated | Complete 50 sessions | Epic |
+| `century` | `medal` | Century | Complete 100 sessions | Legendary |
+
+**Time**
+
+| ID | Art | Label | Condition | Rarity |
+|----|-----|-------|-----------|--------|
+| `marathon` | `books` | Marathon | Study 3+ hours in one day | Rare |
+| `hours_10` | `clock` | 10 Hour Club | Study 10 total hours | Common |
+| `hours_50` | `bolt` | Powerhouse | Study 50 total hours | Epic |
+| `hours_100` | `gem` | Diamond Grinder | Study 100 total hours | Legendary |
+| `early_bird` | `sun` | Early Bird | Log a session before 9 AM | Rare |
+| `night_owl` | `moon` | Night Owl | Log a session after 9 PM | Rare |
+
+**Mastery**
+
+| ID | Art | Label | Condition | Rarity |
+|----|-----|-------|-----------|--------|
+| `well_rounded` | `sparkle` | Well-Rounded | Study 5+ different subjects | Rare |
+| `subject_master` | `target` | Subject Master | 10 sessions in one subject | Epic |
+| `note_keeper` | `scroll` | Note Keeper | Add notes to 5 sessions | Common |
+| `perfect_day` | `check` | Perfect Day | Hit your daily study goal | Common |
+| `perfect_week` | `calendar` | Perfect Week | Hit your goal 7 days in a row | Legendary |
 
 ---
 
@@ -315,7 +349,7 @@ Configured in Settings, persisted via `ThemeContext`.
 ### Avatar
 
 Two avatar modes:
-1. **Photo from camera roll** — picked via `expo-image-picker` with crop-to-square. URI stored in `focusAvatarImage`.
+1. **Photo from camera roll** — picked via `expo-image-picker` with crop-to-square. The picked image is converted to a self-contained **data URL** ([services/avatar.ts](services/avatar.ts)) before being stored in `focusAvatarImage`, so it travels through the existing AsyncStorage → Supabase progress sync (no Storage bucket needed) and renders on every platform including web.
 2. **Emoji avatar** — 24 emoji options + 8 background colors. Stored in `focusAvatar` + `focusAvatarBg`.
 
 A reusable `<Avatar size={...} />` component ([components/Avatar.tsx](components/Avatar.tsx)) renders whichever is set (photo takes precedence). Shown in Settings header, Dashboard hero, and the onboarding preview.
@@ -352,21 +386,21 @@ A timed falling-stars mini-game ([components/StarCatchGame.tsx](components/StarC
 
 ### 🐾 Study Pet Companion
 
-A persistent buddy ([components/StudyPet.tsx](components/StudyPet.tsx)) shown at the top of the Game screen. The pet evolves visually as the user levels up:
+A persistent buddy ([components/StudyPet.tsx](components/StudyPet.tsx)) shown at the top of the Game screen. Each stage is a **hand-built SVG creature** ([components/art/PetArt.tsx](components/art/PetArt.tsx)) in one cohesive "rounded geometric mascot" style, tinted from the theme accent (except signature creatures — phoenix fire, unicorn white — which keep their identity). The pet evolves visually as the user levels up:
 
-| Level | Emoji | Name |
-|-------|-------|------|
-| 0 | 🥚 | Mystery Egg |
-| 1 | 🐣 | Hatchling |
-| 2 | 🐥 | Chick |
-| 3 | 🦊 | Fox Cub |
-| 5 | 🐺 | Wolf |
-| 7 | 🦅 | Eagle |
-| 10 | 🦄 | Unicorn |
-| 15 | 🐉 | Dragon |
-| 25 | 🔥 | Phoenix |
+| Level | Art key | Name | Hint |
+|-------|---------|------|------|
+| 0 | `egg` | Mystery Egg | Study to hatch! |
+| 1 | `hatchling` | Hatchling | It's waking up! |
+| 2 | `chick` | Chick | Growing fast |
+| 3 | `fox` | Fox Cub | Curious and bright |
+| 5 | `wolf` | Wolf | Loyal companion |
+| 7 | `eagle` | Eagle | Sharp focus |
+| 10 | `unicorn` | Unicorn | Magical study buddy |
+| 15 | `dragon` | Dragon | Legendary scholar |
+| 25 | `phoenix` | Phoenix | Eternal flame of focus |
 
-The pet bounces and sparkles. A "Next Evolution" preview shows the player what's coming.
+The pet bounces and sparkles. A "Next Evolution" preview renders the upcoming creature (also as SVG art) so the player sees what's coming.
 
 ### 🎉 Confetti
 
@@ -379,6 +413,23 @@ Pure-RN confetti burst ([components/Confetti.tsx](components/Confetti.tsx)) fire
 
 ---
 
+## Custom Vector Art
+
+Instead of leaning on emoji, the gamified surfaces are drawn as **hand-built SVG art** (`react-native-svg`) on a 100×100 viewBox so everything stays crisp at any size and can be tinted from the live theme accent. Two art modules:
+
+### `components/art/PetArt.tsx`
+The evolving Study Pet creatures (`egg` → `phoenix`), one cohesive rounded-geometric mascot style. A `palette(accent)` helper derives light/main/dark/deep/belly shades from the user's accent so the companion always matches the app; signature creatures keep their own identity (phoenix fire, unicorn white).
+
+### `components/art/GameIcons.tsx`
+The RPG-flavored game glyphs, all recolorable:
+- **`QuestCrest`** — a gradient shield badge framing a white glyph, used for daily quests and the achievement grid/detail modal. Supports `done` and `locked` states (dimmed/greyed).
+- **`LevelMedallion`** — a hex/coin medallion for the Duolingo-style level-path nodes on the Game screen.
+- **Glyph set** (`GlyphKey`) — `target`, `swords`, `dice`, `swap`, `books`, `bolt`, `brain`, `shield`, `scroll`, `medal`, `star`, `flame`, `clock`, `crown`, `gem`, `sparkle`, `sun`, `moon`, `calendar`, `check`. Quests and achievements reference these by their `art` key.
+
+Because every shape is tinted off the accent (via `theme/design.ts` color math), changing the theme restyles the pet, crests, and medallions along with everything else.
+
+---
+
 ## Design System & UI Consistency
 
 A shared design system ([theme/design.ts](theme/design.ts)) is the single source of truth so the whole app reads as one product rather than a pile of ad-hoc styles.
@@ -388,6 +439,8 @@ A shared design system ([theme/design.ts](theme/design.ts)) is the single source
 - **Cross-platform elevation** presets (`elevation(1–4)`) and colored **`glow`** for active/game elements.
 - **Shared screen header** (`screenHeader`) — one rounded, softly-elevated gradient header applied across the feature screens (Study, Tasks, Wellness, Screen Time, Goals) so they all match the Dashboard hero instead of each rolling their own flat bar.
 - **Tier / rarity system** (`TIER_COLORS`, `TIER_LABEL`) shared by quests, badges, and treasures.
+- **Shared empty state** ([components/EmptyState.tsx](components/EmptyState.tsx)) — one placeholder (big icon, optional title, body, optional accent hint) used across Study, Tasks, Goals, Wellness, and Screen Time so every "nothing here yet" screen looks identical instead of each rolling its own icon size and spacing.
+- **Cross-platform confirm dialog** ([services/dialog.ts](services/dialog.ts)) — a `confirm()` helper that uses `Alert.alert` on native and falls back to `window.confirm` on web (where `Alert` button callbacks don't fire), so destructive actions (delete, sign out) prompt consistently everywhere.
 
 Everything is recomputed from the live accent color, so changing the theme in Settings restyles the whole app instantly.
 
@@ -428,11 +481,15 @@ All data is stored locally via `AsyncStorage`. When the user signs in, the user-
 | `focusEnableAnimations` | Animation toggle |
 | `focusAvatar` | User's avatar emoji |
 | `focusAvatarBg` | Avatar background color hex |
-| `focusAvatarImage` | URI of user's camera-roll profile picture (or null) |
+| `focusAvatarImage` | Data URL of user's camera-roll profile picture (or null) |
 | `focusStarGameDate` | Last day the Star Catch mini-game was played (YYYY-M-D) |
 | `focusLastSyncedAt` | ISO timestamp of the last successful cloud sync |
 | `focusGoogleToken` | Google Calendar OAuth token (access, expiry, refresh) |
+| `focusStudyReminderOn` / `focusStudyReminderTime` | Study reminder toggle + time-of-day |
+| `focusBedtimeReminderOn` / `focusBedtimeReminderTime` | Bedtime reminder toggle + time-of-day |
+| `focusStreakReminderOn` | Streak-at-risk reminder toggle |
 | `focusStudyReminderId` | Scheduled notification ID |
 | `focusBedtimeReminderId` | Scheduled notification ID |
 | `focusStreakReminderId` | Scheduled notification ID |
 | `focusTaskNotifMap` | Map of taskId → notification ID |
+| `focusNotifPermission` / `focusHealthPermission` | Cached permission-granted flags |
