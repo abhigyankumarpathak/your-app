@@ -45,3 +45,6 @@ args = "npm run build:web && npm run serve:web"
 [userenv.shared]
 EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_LWp2m2zBSEEwHi1eS8xjVg_UI6mjP0d"
 EXPO_PUBLIC_SUPABASE_URL = "https://dfidtzpinjqrpujthtpz.supabase.co"
+
+[agent]
+expertMode = true
