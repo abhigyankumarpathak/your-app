@@ -117,8 +117,13 @@ with no extra setup:
 - **Deploy** runs `npm run build:web` and serves `dist/` as a static deployment.
 
 Because `.env` is gitignored, add your env vars as **Replit Secrets** (Tools →
-Secrets) instead — the same `EXPO_PUBLIC_*` names as below. They are inlined at
-build time, so re-run the build after changing them.
+Secrets) instead — the same `EXPO_PUBLIC_*` names as below.
+
+> `EXPO_PUBLIC_*` vars are **inlined into the bundle at build time**, not read at
+> runtime. Metro caches the transform that does the inlining, so a stale cache
+> can bake in an old (or empty) value even after you change a Secret. That's why
+> `build:web` runs `expo export --clear`. After changing any Secret, re-deploy —
+> restarting the app alone won't pick it up.
 
 ## Google Calendar (optional)
 
@@ -152,15 +157,33 @@ Only the platform you actually run needs a value.
 
 ### 3. Native only — register the redirect scheme
 
-iOS/Android use a PKCE redirect back into the app, which needs the *reversed*
-client ID registered as a URL scheme. Add it to `app.json` under
-`ios.infoPlist.CFBundleURLTypes` (and rebuild the dev client):
+**Skip this if you only run on the web** — the web flow uses a Google Identity
+Services popup and needs no scheme.
 
-```json
-{ "CFBundleURLSchemes": ["com.googleusercontent.apps.yyy"] }
+iOS/Android use a PKCE redirect back into the app, which needs the *reversed*
+client ID registered as a URL scheme. Reverse it by dropping
+`.apps.googleusercontent.com` and prefixing `com.googleusercontent.apps.`:
+
+```
+client ID : 12345-abcdef.apps.googleusercontent.com
+scheme    : com.googleusercontent.apps.12345-abcdef
 ```
 
-The web flow needs no scheme — it uses Google Identity Services in a popup.
+Add it to `app.json` under `expo.ios.infoPlist` (alongside the existing
+`NS*UsageDescription` keys):
+
+```json
+"CFBundleURLTypes": [
+  { "CFBundleURLSchemes": ["com.googleusercontent.apps.12345-abcdef"] }
+]
+```
+
+For Android, add the same scheme under `expo.android.intentFilters`. Then
+rebuild the native app — `app.json` changes don't hot-reload:
+
+```bash
+npx expo run:ios      # or: npx expo run:android
+```
 
 ## Get a fresh project
 

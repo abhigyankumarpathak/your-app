@@ -11,7 +11,7 @@
     "go:tunnel": "expo start --go --tunnel",
     "web": "expo start --web",
     "replit": "expo start --web --port 5000",
-    "build:web": "expo export --platform web --output-dir dist",
+    "build:web": "expo export --platform web --output-dir dist --clear",
     "serve:web": "expo serve --port 5000",
     "lint": "expo lint"
   },
