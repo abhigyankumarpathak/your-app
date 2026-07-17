@@ -582,7 +582,11 @@ export default function Onboarding({ onComplete }: Props) {
                 <View style={{ flex: 1, marginLeft: responsiveSpacing(10) }}>
                   <Text style={[dynamicStyles.inputLabel, { marginBottom: 2 }]}>Screen Time</Text>
                   <Text style={[dynamicStyles.hintText, { marginTop: 0 }]}>
-                    {Platform.OS === 'ios' ? 'iOS Screen Time in Settings' : 'Digital Wellbeing in Settings'}
+                    {Platform.OS === 'ios'
+                      ? 'iOS Screen Time in Settings'
+                      : Platform.OS === 'web'
+                        ? 'Log your usage manually on web'
+                        : 'Digital Wellbeing in Settings'}
                   </Text>
                 </View>
                 <TouchableOpacity

@@ -12,6 +12,7 @@ import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } fro
 import { areNotificationsAvailable, cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, isCalendarAvailable, openHealthSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
 import { isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
+import { isGoogleCalendarConfigured, isGoogleSignedIn, signInToGoogle, signOutGoogle } from '../services/googleCalendar';
 import { getLastSyncedAt } from '../services/sync';
 import { confirm, notify } from '../services/dialog';
 import { toAvatarDataUrl } from '../services/avatar';
@@ -20,6 +21,7 @@ const IS_WEB = Platform.OS === 'web';
 const NOTIFICATIONS_AVAILABLE = areNotificationsAvailable();
 const CALENDAR_AVAILABLE = isCalendarAvailable();
 const HEALTH_AVAILABLE = isHealthAvailable();
+const GOOGLE_CALENDAR_AVAILABLE = isGoogleCalendarConfigured();
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];
@@ -144,6 +146,8 @@ export default function Settings() {
 
   const [calendarPermission, setCalendarPermission] = useState(false);
   const [healthPermission, setHealthPermission] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const [notifPermission, setNotifPermission] = useState(false);
   const [studyReminderOn, setStudyReminderOn] = useState(false);
@@ -181,6 +185,7 @@ export default function Settings() {
 
   const loadNotifSettings = async () => {
     checkCalendarPermission().then(setCalendarPermission);
+    if (GOOGLE_CALENDAR_AVAILABLE) isGoogleSignedIn().then(setGoogleConnected);
     hasNotificationPermission().then(granted => {
       setNotifPermission(granted);
       if (granted) AsyncStorage.setItem('focusNotifPermission', 'true');
@@ -202,6 +207,27 @@ export default function Settings() {
     const granted = await requestNotificationPermission();
     setNotifPermission(granted);
     await AsyncStorage.setItem('focusNotifPermission', String(granted));
+  };
+
+  const handleToggleGoogle = async () => {
+    setGoogleBusy(true);
+    try {
+      if (googleConnected) {
+        const ok = await confirm('Disconnect Google Calendar', 'Your events will stop showing on the Schedule screen.', {
+          confirmText: 'Disconnect',
+          destructive: true,
+        });
+        if (!ok) return;
+        await signOutGoogle();
+        setGoogleConnected(false);
+        return;
+      }
+      const ok = await signInToGoogle();
+      setGoogleConnected(ok);
+      if (!ok) notify('Not connected', 'Google sign-in was cancelled or failed. Please try again.');
+    } finally {
+      setGoogleBusy(false);
+    }
   };
 
   const handleRequestHealthPermission = async () => {
@@ -897,7 +923,9 @@ export default function Settings() {
       {IS_WEB && (
         <View style={[styles.webNotice, { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor }]}>
           <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1, lineHeight: 20 }]}>
-            Calendar access and scheduled reminders are only available in the iOS and Android apps. Photo uploads work in your browser.
+            {GOOGLE_CALENDAR_AVAILABLE
+              ? 'Device calendar access and scheduled reminders are only available in the iOS and Android apps. Connect Google Calendar below to see your events here. Photo uploads work in your browser.'
+              : 'Device calendar access and scheduled reminders are only available in the iOS and Android apps. Photo uploads work in your browser.'}
           </Text>
         </View>
       )}
@@ -925,6 +953,34 @@ export default function Settings() {
           </View>
         )}
       </View>
+
+      {/* Google Calendar — works on web, where the device calendar can't. */}
+      {GOOGLE_CALENDAR_AVAILABLE && (
+        <>
+          <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
+          <View style={styles.notifRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>🗓️ Google Calendar</Text>
+              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                {IS_WEB ? 'Show your events on the web' : 'A second calendar source'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.permStatusBtn, { backgroundColor: googleConnected ? '#10B98120' : '#6366F120', borderColor: googleConnected ? '#10B981' : '#6366F1' }]}
+              onPress={handleToggleGoogle}
+              disabled={googleBusy}
+            >
+              {googleBusy ? (
+                <ActivityIndicator size="small" color="#6366F1" />
+              ) : (
+                <Text style={[{ fontWeight: '700', fontSize: fontSizes.base - 1, color: googleConnected ? '#10B981' : '#6366F1' }]}>
+                  {googleConnected ? '✓ Connected' : 'Connect'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       <View style={[styles.divider, { backgroundColor: presetValues.borderColor, marginVertical: 14 }]} />
 

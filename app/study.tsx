@@ -6,6 +6,7 @@ import {
     Animated,
     Easing,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -18,6 +19,7 @@ import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
 import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 import { updateQuestProgress } from '../services/quests';
+import { confirm, notify } from '../services/dialog';
 import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -127,16 +129,16 @@ export default function Study() {
       if (nextCount % 4 === 0) {
         setPomodoroPhase('longbreak');
         setPomodoroSeconds(POMO_LONG_BREAK);
-        Alert.alert('🎉 4 Pomodoros done!', 'Take a well-earned 15-minute break!');
+        announcePhase('🎉 4 Pomodoros done!', 'Take a well-earned 15-minute break!');
       } else {
         setPomodoroPhase('break');
         setPomodoroSeconds(POMO_BREAK);
-        Alert.alert('⏸ Break time!', 'Great work! Take a 5-minute break.');
+        announcePhase('⏸ Break time!', 'Great work! Take a 5-minute break.');
       }
     } else {
       setPomodoroPhase('work');
       setPomodoroSeconds(POMO_WORK);
-      Alert.alert('▶ Back to work!', `Starting Pomodoro ${pomodoroCount + 1}`);
+      announcePhase('▶ Back to work!', `Starting Pomodoro ${pomodoroCount + 1}`);
     }
   }, [pomodoroSeconds, running, pomodoroEnabled]);
 
@@ -179,6 +181,13 @@ export default function Study() {
     ]).start(() => setXpToast(''));
   };
 
+  // Phase changes fire while the timer is running. window.alert would block the
+  // event loop and stall the countdown, so web gets the non-blocking toast.
+  const announcePhase = (title: string, body: string) => {
+    if (Platform.OS === 'web') showXpToast(title);
+    else Alert.alert(title, body);
+  };
+
   const commitSession = async (secs: number, notes: string) => {
     if (secs < 5) return;
     const newSession = { id: Date.now(), subject: subject || 'General', duration: secs, date: new Date().toLocaleDateString(), notes: notes.trim() || undefined };
@@ -202,7 +211,7 @@ export default function Study() {
   };
 
   const handleStart = () => {
-    if (!subject.trim()) { Alert.alert('What are you studying?', 'Please enter a subject to get started!'); return; }
+    if (!subject.trim()) { notify('What are you studying?', 'Please enter a subject to get started!'); return; }
     setRunning(true);
     setPaused(false);
     if (pomodoroEnabled) { setPomodoroPhase('work'); setPomodoroSeconds(POMO_WORK); setPomodoroCount(0); }
@@ -247,8 +256,8 @@ export default function Study() {
   const handleAddManual = async () => {
     const h = parseFloat(logHours) || 0, m = parseFloat(logMinutes) || 0;
     const totalSecs = Math.round(h * 3600 + m * 60);
-    if (!logSubject.trim()) { Alert.alert('Missing subject', 'Please enter a subject.'); return; }
-    if (totalSecs <= 0) { Alert.alert('Missing duration', 'Enter hours or minutes.'); return; }
+    if (!logSubject.trim()) { notify('Missing subject', 'Please enter a subject.'); return; }
+    if (totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
     const newSession = { id: Date.now(), subject: logSubject.trim(), duration: totalSecs, date: resolveDate(logDateChoice, logCustomDate), notes: logNotes.trim() || undefined };
     const updated = [newSession, ...sessions];
     await persist(updated);
@@ -273,17 +282,21 @@ export default function Study() {
   const handleSaveEdit = () => {
     const h = parseFloat(editHours) || 0, m = parseFloat(editMinutes) || 0;
     const totalSecs = Math.round(h * 3600 + m * 60);
-    if (!editSubject.trim()) { Alert.alert('Missing subject', 'Enter a subject.'); return; }
-    if (totalSecs <= 0) { Alert.alert('Missing duration', 'Enter hours or minutes.'); return; }
+    if (!editSubject.trim()) { notify('Missing subject', 'Enter a subject.'); return; }
+    if (totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
     persist(sessions.map((s) => s.id === editSession.id ? { ...s, subject: editSubject.trim(), duration: totalSecs, date: resolveDate(editDateChoice, editCustomDate), notes: editNotes.trim() || undefined } : s));
     setEditSession(null);
   };
 
-  const handleDelete = () => {
-    Alert.alert('Delete session?', `Remove "${editSession.subject}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { persist(sessions.filter((s) => s.id !== editSession.id)); setEditSession(null); } },
-    ]);
+  const handleDelete = async () => {
+    const ok = await confirm('Delete session?', `Remove "${editSession.subject}"?`, {
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (ok) {
+      persist(sessions.filter((s) => s.id !== editSession.id));
+      setEditSession(null);
+    }
   };
 
   const todaySessions = sessions.filter((s) => s.date === new Date().toLocaleDateString());

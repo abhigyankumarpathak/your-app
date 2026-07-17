@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
 import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
+import { confirm, notify } from '../services/dialog';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'longterm';
 
@@ -235,7 +236,7 @@ export default function Goals() {
 
   const saveGoal = () => {
     if (!draft.title.trim() || !draft.specific.trim()) {
-      Alert.alert('Almost there!', 'Please fill in the title and Specific (S) field at minimum.');
+      notify('Almost there!', 'Please fill in the title and Specific (S) field at minimum.');
       return;
     }
     const g: SmartGoal = { ...draft, id: Date.now(), createdAt: new Date().toLocaleDateString() };
@@ -249,11 +250,13 @@ export default function Goals() {
   const updateProgress = (id: number, progress: number) =>
     saveGoals(goals.map((g) => (g.id === id ? { ...g, progress } : g)));
 
-  const deleteGoal = (id: number) =>
-    Alert.alert('Delete Goal', 'Remove this goal?', [
-      { text: 'Cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => saveGoals(goals.filter((g) => g.id !== id)) },
-    ]);
+  const deleteGoal = async (id: number) => {
+    const ok = await confirm('Delete Goal', 'Remove this goal?', {
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (ok) saveGoals(goals.filter((g) => g.id !== id));
+  };
 
   const tabGoals = goals.filter((g) => g.period === activeTab);
   const pending = tabGoals.filter((g) => !g.completed);

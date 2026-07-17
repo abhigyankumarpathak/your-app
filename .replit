@@ -1,0 +1,42 @@
+modules = ["nodejs-20"]
+
+# Dev server with hot reload. Replit's webview forwards localPort 5000 -> :80.
+run = "npm run replit"
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+EXPO_NO_TELEMETRY = "1"
+# Metro needs more headroom than Replit's default heap for a ~1500-module bundle.
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+# Expo/Metro binds 0.0.0.0 already; this maps it to the public URL.
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+# `Deploy` builds the static site and serves it as plain files — no Node process.
+[deployment]
+deploymentTarget = "static"
+build = ["npm", "run", "build:web"]
+publicDir = "dist"
+
+[workflows]
+runButton = "Dev server"
+
+[[workflows.workflow]]
+name = "Dev server"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run replit"
+
+[[workflows.workflow]]
+name = "Preview production build"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:web && npm run serve:web"

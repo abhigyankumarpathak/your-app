@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { isSupabaseConfigured } from '../services/supabase';
+import { notify } from '../services/dialog';
 import { accentGradient } from '../theme/design';
 
 type Mode = 'signIn' | 'signUp';
@@ -44,11 +44,11 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
 
   const submit = async () => {
     if (!email.trim() || !password) {
-      Alert.alert('Missing info', 'Enter both an email and a password.');
+      notify('Missing info', 'Enter both an email and a password.');
       return;
     }
     if (mode === 'signUp' && password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      notify('Weak password', 'Password must be at least 6 characters.');
       return;
     }
     setBusy(true);
@@ -58,11 +58,11 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
         : await signUp(email, password);
 
       if (result.error) {
-        Alert.alert(mode === 'signIn' ? 'Sign in failed' : 'Sign up failed', result.error);
+        notify(mode === 'signIn' ? 'Sign in failed' : 'Sign up failed', result.error);
         return;
       }
       if (mode === 'signUp' && 'needsConfirmation' in result && result.needsConfirmation) {
-        Alert.alert(
+        notify(
           'Check your email',
           'We sent a confirmation link to ' + email.trim() + '. Confirm to finish creating your account, then sign in.'
         );

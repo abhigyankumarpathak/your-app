@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Alert, Linking, Platform } from 'react-native';
+import { notify } from './dialog';
 
 // expo-image-picker is a native module on iOS/Android. On web it uses a
 // browser file-input and has no native module to register, so we always treat
@@ -69,6 +70,13 @@ export const checkCalendarPermission = async (): Promise<boolean> => {
 };
 
 export const openScreenTimeSettings = () => {
+  if (Platform.OS === 'web') {
+    notify(
+      'Not available on web',
+      'Screen Time lives in your phone\'s system settings. Open Focus on your iPhone or Android device, or log your usage manually below.'
+    );
+    return;
+  }
   if (Platform.OS === 'ios') {
     Linking.openURL('App-prefs:root=SCREEN_TIME').catch(() => Linking.openSettings());
   } else {
@@ -79,6 +87,13 @@ export const openScreenTimeSettings = () => {
 };
 
 export const openHealthSettings = () => {
+  if (Platform.OS === 'web') {
+    notify(
+      'Not available on web',
+      'Health data comes from Apple Health or Health Connect on your phone. Open Focus on your device to sync, or enter your sleep and activity manually.'
+    );
+    return;
+  }
   if (Platform.OS === 'ios') {
     Linking.openURL('App-prefs:root=Privacy&path=HEALTH').catch(() => Linking.openSettings());
   } else {

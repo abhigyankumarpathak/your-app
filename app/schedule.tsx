@@ -3,13 +3,33 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
 import { elevation, radius } from '../theme/design';
-import { checkCalendarPermission } from '../services/permissions';
+import { checkCalendarPermission, isCalendarAvailable } from '../services/permissions';
+import { confirm, notify } from '../services/dialog';
+import {
+  getGoogleEvents,
+  isGoogleCalendarConfigured,
+  isGoogleSignedIn,
+  signInToGoogle,
+  signOutGoogle,
+} from '../services/googleCalendar';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** Device (Apple/system) and Google events, normalized into one shape so the
+ *  week view doesn't care where a given event came from. */
+type UnifiedEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay: boolean;
+  location?: string;
+  source: 'device' | 'google';
+};
 
 function getDayName(date: Date) {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
@@ -35,8 +55,10 @@ function startOfWeek(date: Date) {
 export default function Schedule() {
   const { accentColor, presetValues, fontSizes } = useTheme();
   const [activities, setActivities] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<Calendar.Event[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<UnifiedEvent[]>([]);
   const [calendarAccess, setCalendarAccess] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [day, setDay] = useState('Mon');
@@ -57,30 +79,91 @@ export default function Schedule() {
   };
 
   const loadCalendarEvents = async () => {
+    const weekStart = startOfWeek(new Date());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const collected: UnifiedEvent[] = [];
+
+    // Device calendar — native only; there is no OS calendar in a browser.
     const hasAccess = await checkCalendarPermission();
     setCalendarAccess(hasAccess);
-    if (!hasAccess) return;
-
-    try {
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      if (!calendars.length) return;
-
-      const weekStart = startOfWeek(new Date());
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-
-      const events = await Calendar.getEventsAsync(
-        calendars.map((c) => c.id),
-        weekStart,
-        weekEnd
-      );
-
-      // Sort by start date
-      events.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-      setCalendarEvents(events);
-    } catch (e) {
-      console.log('Calendar fetch error:', e);
+    if (hasAccess) {
+      try {
+        const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+        if (calendars.length) {
+          const events = await Calendar.getEventsAsync(
+            calendars.map((c) => c.id),
+            weekStart,
+            weekEnd
+          );
+          for (const e of events) {
+            collected.push({
+              id: `device-${e.id}`,
+              title: e.title,
+              start: new Date(e.startDate),
+              end: new Date(e.endDate),
+              allDay: Boolean(e.allDay),
+              location: e.location || undefined,
+              source: 'device',
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Calendar fetch error:', e);
+      }
     }
+
+    // Google Calendar — works everywhere, and is the only real source on web.
+    const signedIn = await isGoogleSignedIn();
+    setGoogleConnected(signedIn);
+    if (signedIn) {
+      const events = await getGoogleEvents(weekStart, weekEnd);
+      if (events === null) {
+        // Token expired or was revoked — reflect that instead of showing nothing.
+        setGoogleConnected(false);
+      } else {
+        for (const e of events) {
+          collected.push({
+            id: `google-${e.id}`,
+            title: e.title,
+            start: new Date(e.startDate),
+            end: new Date(e.endDate),
+            allDay: e.allDay,
+            location: e.location,
+            source: 'google',
+          });
+        }
+      }
+    }
+
+    collected.sort((a, b) => a.start.getTime() - b.start.getTime());
+    setCalendarEvents(collected);
+  };
+
+  const handleConnectGoogle = async () => {
+    setConnectingGoogle(true);
+    try {
+      const ok = await signInToGoogle();
+      if (ok) {
+        setGoogleConnected(true);
+        await loadCalendarEvents();
+      } else {
+        notify('Not connected', 'Google sign-in was cancelled or failed. Please try again.');
+      }
+    } finally {
+      setConnectingGoogle(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    const ok = await confirm('Disconnect Google Calendar', 'Your events will stop showing here.', {
+      confirmText: 'Disconnect',
+      destructive: true,
+    });
+    if (!ok) return;
+    await signOutGoogle();
+    setGoogleConnected(false);
+    await loadCalendarEvents();
   };
 
   const saveActivities = async (items: any[]) => {
@@ -98,89 +181,125 @@ export default function Schedule() {
     setShowForm(false);
   };
 
-  const deleteActivity = (id: number) => {
-    Alert.alert('Delete Activity', 'Remove this activity?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => saveActivities(activities.filter((x) => x.id !== id)) },
-    ]);
+  const deleteActivity = async (id: number) => {
+    const ok = await confirm('Delete Activity', 'Remove this activity?', {
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (ok) saveActivities(activities.filter((x) => x.id !== id));
   };
 
   // Group calendar events by day name
-  const eventsByDay: Record<string, Calendar.Event[]> = {};
+  const eventsByDay: Record<string, UnifiedEvent[]> = {};
   calendarEvents.forEach((e) => {
-    const d = getDayName(new Date(e.startDate));
+    const d = getDayName(e.start);
     if (!eventsByDay[d]) eventsByDay[d] = [];
     eventsByDay[d].push(e);
   });
 
   const hasAnything = activities.length > 0 || calendarEvents.length > 0;
+  const googleAvailable = isGoogleCalendarConfigured();
+  // Any live source at all? On web, Google is the only one that can be.
+  const hasEventSource = calendarAccess || googleConnected;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: presetValues.bg }]}>
       <View style={styles.content}>
 
         {/* Calendar events section */}
-        {calendarAccess ? (
-          <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
-                📆 This Week's Events
-              </Text>
+        <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
+              📆 This Week's Events
+            </Text>
+            {hasEventSource && (
               <TouchableOpacity onPress={loadCalendarEvents}>
                 <Ionicons name="refresh" size={18} color={accentColor} />
               </TouchableOpacity>
-            </View>
-
-            {calendarEvents.length === 0 ? (
-              <Text style={[styles.emptyNote, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
-                No calendar events this week.
-              </Text>
-            ) : (
-              DAYS.map((d) => {
-                const events = eventsByDay[d];
-                if (!events?.length) return null;
-                return (
-                  <View key={d}>
-                    <Text style={[styles.dayLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                      {d.toUpperCase()}
-                    </Text>
-                    {events.map((e) => (
-                      <View key={e.id} style={[styles.eventCard, { backgroundColor: presetValues.bgSecondary, borderLeftColor: accentColor }]}>
-                        <Text style={[styles.eventTitle, { color: presetValues.text, fontSize: fontSizes.base }]} numberOfLines={1}>
-                          {e.title}
-                        </Text>
-                        {!e.allDay && (
-                          <Text style={[styles.eventTime, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                            {formatTime(new Date(e.startDate))} – {formatTime(new Date(e.endDate))}
-                          </Text>
-                        )}
-                        {e.allDay && (
-                          <Text style={[styles.eventTime, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-                            All day
-                          </Text>
-                        )}
-                        {e.location ? (
-                          <Text style={[styles.eventLocation, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]} numberOfLines={1}>
-                            📍 {e.location}
-                          </Text>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                );
-              })
             )}
           </View>
-        ) : (
-          <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
-            <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
-              📆 Calendar Events
-            </Text>
+
+          {/* Google Calendar connect/disconnect */}
+          {googleAvailable && (
+            <TouchableOpacity
+              style={[
+                styles.googleBtn,
+                { borderColor: googleConnected ? presetValues.borderColor : accentColor },
+              ]}
+              onPress={googleConnected ? handleDisconnectGoogle : handleConnectGoogle}
+              disabled={connectingGoogle}
+            >
+              {connectingGoogle ? (
+                <ActivityIndicator size="small" color={accentColor} />
+              ) : (
+                <>
+                  <Ionicons
+                    name={googleConnected ? 'checkmark-circle' : 'logo-google'}
+                    size={18}
+                    color={googleConnected ? '#10B981' : accentColor}
+                  />
+                  <Text
+                    style={[
+                      styles.googleBtnText,
+                      { color: presetValues.text, fontSize: fontSizes.base - 1 },
+                    ]}
+                  >
+                    {googleConnected ? 'Google Calendar connected — tap to disconnect' : 'Connect Google Calendar'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {!hasEventSource ? (
             <Text style={[styles.emptyNote, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
-              Calendar access not granted. Enable it in Settings → Notifications → Calendar Access.
+              {googleAvailable
+                ? isCalendarAvailable()
+                  ? 'Connect Google Calendar above, or grant device calendar access in Settings → Calendar Access.'
+                  : 'Connect Google Calendar above to see your events here.'
+                : isCalendarAvailable()
+                  ? 'Calendar access not granted. Enable it in Settings → Notifications → Calendar Access.'
+                  : 'Your device calendar isn\'t available in a browser. Set up Google Calendar to see events on the web — see README.md.'}
             </Text>
-          </View>
-        )}
+          ) : calendarEvents.length === 0 ? (
+            <Text style={[styles.emptyNote, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+              No calendar events this week.
+            </Text>
+          ) : (
+            DAYS.map((d) => {
+              const events = eventsByDay[d];
+              if (!events?.length) return null;
+              return (
+                <View key={d}>
+                  <Text style={[styles.dayLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                    {d.toUpperCase()}
+                  </Text>
+                  {events.map((e) => (
+                    <View key={e.id} style={[styles.eventCard, { backgroundColor: presetValues.bgSecondary, borderLeftColor: accentColor }]}>
+                      <Text style={[styles.eventTitle, { color: presetValues.text, fontSize: fontSizes.base }]} numberOfLines={1}>
+                        {e.title}
+                      </Text>
+                      <Text style={[styles.eventTime, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                        {e.allDay ? 'All day' : `${formatTime(e.start)} – ${formatTime(e.end)}`}
+                      </Text>
+                      {e.location ? (
+                        <Text style={[styles.eventLocation, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]} numberOfLines={1}>
+                          📍 {e.location}
+                        </Text>
+                      ) : null}
+                      {/* Only worth labelling when both sources are live. */}
+                      {calendarAccess && googleConnected && (
+                        <Text style={[styles.eventSource, { color: presetValues.textSecondary, fontSize: fontSizes.base - 3 }]}>
+                          {e.source === 'google' ? 'Google Calendar' : 'Device Calendar'}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              );
+            })
+          )}
+        </View>
 
         {/* Manual activities section */}
         <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
@@ -286,6 +405,9 @@ const styles = StyleSheet.create({
   eventTitle: { fontWeight: '600', marginBottom: 2 },
   eventTime: { fontWeight: '500' },
   eventLocation: { fontWeight: '500', marginTop: 2 },
+  eventSource: { fontWeight: '500', marginTop: 4, opacity: 0.7 },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 12, minHeight: 44 },
+  googleBtnText: { fontWeight: '600' },
   // Manual activities
   addButton: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, justifyContent: 'center', marginBottom: 12 },
   addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 6 },

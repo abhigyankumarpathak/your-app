@@ -10,6 +10,9 @@
     "go": "expo start --go",
     "go:tunnel": "expo start --go --tunnel",
     "web": "expo start --web",
+    "replit": "expo start --web --port 5000",
+    "build:web": "expo export --platform web --output-dir dist",
+    "serve:web": "expo serve --port 5000",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -22,8 +25,10 @@
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.105.4",
     "expo": "~54.0.35",
+    "expo-auth-session": "~7.0.11",
     "expo-calendar": "~15.0.8",
     "expo-constants": "~18.0.13",
+    "expo-crypto": "~15.0.9",
     "expo-dev-client": "~6.0.21",
     "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.8",

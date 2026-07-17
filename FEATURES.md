@@ -209,6 +209,26 @@ Creation uses a guided step-by-step modal with example answers for each field.
 - Weekly view organized by day
 - Color-coded activities with time tracking
 
+### Calendar Sources
+
+Device and Google events are normalized into one `UnifiedEvent` shape, so the
+week view renders both from a single sorted list. When both are live, each event
+card is labelled with its origin.
+
+| Source | Platforms | Notes |
+|--------|-----------|-------|
+| Device calendar | iOS / Android | `expo-calendar`; reads the OS calendar, which browsers don't have |
+| Google Calendar | iOS / Android / **web** | `services/googleCalendar.ts`, read-only (`calendar.readonly`) |
+
+**Google Calendar** is the only way to show real events on the web. Auth splits
+by platform because Google's client types do: web uses Google Identity Services
+(a public SPA can't hold a client secret), native uses a PKCE code flow and gets
+a refresh token so sign-in survives restarts.
+
+Connect/disconnect from the Schedule screen or Settings → Notifications. Hidden
+entirely unless `EXPO_PUBLIC_GOOGLE_CLIENT_ID_{WEB,IOS,ANDROID}` is set — see
+README.md for setup.
+
 ---
 
 ## Wellness
@@ -411,6 +431,7 @@ All data is stored locally via `AsyncStorage`. When the user signs in, the user-
 | `focusAvatarImage` | URI of user's camera-roll profile picture (or null) |
 | `focusStarGameDate` | Last day the Star Catch mini-game was played (YYYY-M-D) |
 | `focusLastSyncedAt` | ISO timestamp of the last successful cloud sync |
+| `focusGoogleToken` | Google Calendar OAuth token (access, expiry, refresh) |
 | `focusStudyReminderId` | Scheduled notification ID |
 | `focusBedtimeReminderId` | Scheduled notification ID |
 | `focusStreakReminderId` | Scheduled notification ID |

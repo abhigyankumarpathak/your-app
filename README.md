@@ -76,6 +76,92 @@ npm run ios
 
 Both workflows can run against the same Supabase project at the same time.
 
+## Running as a website (web build)
+
+The app runs in a browser as well as on phones:
+
+```bash
+npm run web           # dev server with hot reload (http://localhost:8081)
+npm run build:web     # static export -> ./dist
+npm run serve:web     # serve the built ./dist locally
+```
+
+`npm run build:web` produces a plain static site (`app.json` sets
+`web.output: "static"`), so every route is prerendered to its own `.html` and
+can be hosted on any static host — no Node server required.
+
+### What works on the web
+
+Everything that is pure app logic: the study timer and Pomodoro, tasks, goals,
+SMART goals, quests/XP/levels, streaks, the star-catch game, screen-time logging,
+wellness logging, themes, avatars, photo upload, and Supabase login + sync.
+Data persists to `localStorage` via AsyncStorage.
+
+| Feature | Web | Why |
+| --- | --- | --- |
+| Apple Health (steps/sleep/workouts) | ❌ | HealthKit is an iOS native API |
+| Device calendar | ❌ | expo-calendar reads the OS calendar; browsers have none |
+| **Google Calendar** | ✅ | Works on web *and* native — see below |
+| Scheduled reminders | ❌ | Local notifications need a native scheduler |
+| Automatic screen time | ❌ | OS-restricted on every platform; log it manually |
+
+Health and screen-time screens still work on the web — they fall back to manual
+entry rather than disappearing.
+
+## Deploying to Replit
+
+`.replit` is checked in and configured, so importing this repo into Replit works
+with no extra setup:
+
+- **Run** starts the dev server on port 5000 (Replit forwards it to port 80).
+- **Deploy** runs `npm run build:web` and serves `dist/` as a static deployment.
+
+Because `.env` is gitignored, add your env vars as **Replit Secrets** (Tools →
+Secrets) instead — the same `EXPO_PUBLIC_*` names as below. They are inlined at
+build time, so re-run the build after changing them.
+
+## Google Calendar (optional)
+
+Adds a **Connect Google Calendar** button on the Schedule screen and a toggle in
+Settings → Notifications. This is the only way to show real calendar events on
+the web, and on iOS/Android it works alongside the device calendar as a second
+source. Access is **read-only** (`calendar.readonly`).
+
+Leave the env vars unset and the feature hides itself — nothing else changes.
+
+### 1. Create the OAuth client(s)
+
+In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+enable the **Google Calendar API**, then create credentials for the platforms you
+ship:
+
+- **Web application** — add your origins to *Authorized JavaScript origins*
+  (e.g. `http://localhost:8081` and `https://<your-repl>.replit.dev`).
+- **iOS** — bundle ID `com.amitpathak.focus`.
+- **Android** — package `com.amitpathak.focus` + your signing SHA-1.
+
+### 2. Add env vars
+
+```
+EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=xxx.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS=yyy.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID=zzz.apps.googleusercontent.com
+```
+
+Only the platform you actually run needs a value.
+
+### 3. Native only — register the redirect scheme
+
+iOS/Android use a PKCE redirect back into the app, which needs the *reversed*
+client ID registered as a URL scheme. Add it to `app.json` under
+`ios.infoPlist.CFBundleURLTypes` (and rebuild the dev client):
+
+```json
+{ "CFBundleURLSchemes": ["com.googleusercontent.apps.yyy"] }
+```
+
+The web flow needs no scheme — it uses Google Identity Services in a popup.
+
 ## Get a fresh project
 
 When you're ready, run:

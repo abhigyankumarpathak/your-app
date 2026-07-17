@@ -3,11 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
 import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 import { cancelTaskDueAlert, scheduleTaskDueAlert } from '../services/notifications';
+import { notify } from '../services/dialog';
 
 type Priority = 'high' | 'medium' | 'low';
 
@@ -101,7 +102,7 @@ export default function Tasks() {
   };
 
   const addTask = async () => {
-    if (!title.trim()) { Alert.alert('Task needed', 'Please enter a task title.'); return; }
+    if (!title.trim()) { notify('Task needed', 'Please enter a task title.'); return; }
     const dueDate = resolveDueDate(dueDateChoice, customDueDate);
     const newTask = { id: Date.now(), title: title.trim(), subject, priority: priority || undefined, dueDate, goalId: linkedGoalId ?? undefined, done: false };
     const updated = [newTask, ...tasks];

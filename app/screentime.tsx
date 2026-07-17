@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
+import { notify } from '../services/dialog';
 
 function WeekBar({ day, hours, max, accent }: { day: string; hours: number; max: number; accent: string }) {
   const { presetValues, fontSizes } = useTheme();
@@ -73,7 +74,7 @@ export default function ScreenTime() {
   const saveToday = async () => {
     const hours = parseFloat(todayInput);
     if (isNaN(hours) || hours < 0 || hours > 24) {
-      Alert.alert('Invalid input', 'Enter a number between 0 and 24');
+      notify('Invalid input', 'Enter a number between 0 and 24');
       return;
     }
 
@@ -93,7 +94,7 @@ export default function ScreenTime() {
       setTodayInput('');
       buildStats(allLogs);
       setLogs(allLogs);
-      Alert.alert('Saved!', `Screen time logged as ${hours}h today.`);
+      notify('Saved!', `Screen time logged as ${hours}h today.`);
     } catch (e) {
       console.log('Save error:', e);
     }
@@ -106,7 +107,7 @@ export default function ScreenTime() {
       );
     } else {
       Linking.openURL('android.settings.USAGE_ACCESS_SETTINGS').catch(() =>
-        Alert.alert('Open Screen Time', 'Go to Settings > Digital Wellbeing to view your screen time.')
+        notify('Open Screen Time', 'Go to Settings > Digital Wellbeing to view your screen time.')
       );
     }
   };
