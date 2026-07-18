@@ -24,6 +24,12 @@ A tight, energetic walkthrough that shows (1) what the app does for a student, a
 - Record app on **iOS simulator or a real phone**; record the coding section on the
   desktop with the editor + a running Metro/Expo terminal visible.
 - Silence notifications; use a clean home screen.
+- **Record out of order.** Sections 2–3 (login + onboarding) need a *signed-out, fresh*
+  install, but sections 4–7 need the *seeded* account. Shoot the seeded material first,
+  then sign out / reset (Settings fires the `RESET_APP` event) and grab the login and
+  onboarding footage last. Reassemble in the edit.
+- Have the **web build open in a browser, already signed into the same account**, ready
+  for the cross-platform cut in section 7.
 
 ---
 
@@ -31,34 +37,49 @@ A tight, energetic walkthrough that shows (1) what the app does for a student, a
 
 | Section | Time | Screen |
 |---------|------|--------|
-| 1. Hook / title | 0:00–0:12 | App logo → Dashboard |
-| 2. Onboarding (quick) | 0:12–0:28 | Onboarding carousel |
-| 3. Dashboard + Study timer | 0:28–1:00 | Dashboard, Study |
-| 4. Gamification | 1:00–1:35 | Game screen, quests, pet, Star Catch |
-| 5. Productivity: Goals, Tasks, Schedule, Wellness | 1:35–2:05 | those screens |
-| 6. Personalization + cross-platform | 2:05–2:20 | Settings, web build |
-| 7. **The Code** | 2:20–2:55 | Editor |
-| 8. Close | 2:55–3:00 | Dashboard / logo |
+| 1. Hook / title | 0:00–0:10 | App logo → Dashboard |
+| 2. Sign up / log in | 0:10–0:22 | Login screen |
+| 3. Onboarding (quick) | 0:22–0:36 | Onboarding carousel |
+| 4. Dashboard + Study timer | 0:36–1:05 | Dashboard, Study |
+| 5. Gamification | 1:05–1:35 | Game screen, quests, pet, Star Catch |
+| 6. Productivity: Goals, Tasks, Schedule, Wellness | 1:35–2:02 | those screens |
+| 7. Settings: theming, notifications, account & sync | 2:02–2:25 | Settings, web build |
+| 8. **The Code** | 2:25–2:57 | Editor |
+| 9. Close | 2:57–3:02 | Dashboard / logo |
 
 ---
 
 ## Section-by-section script
 
-### 1. Hook / Title — 0:00–0:12
+### 1. Hook / Title — 0:00–0:10
 **On screen:** App opens to the Dashboard hero card animating in. Overlay the title
 *"Focus — a study companion for students."*
 
 **VO:** "This is Focus — a cross-platform study app that turns getting your work done
 into something that actually feels rewarding. It runs on iOS, Android, and the web."
 
-### 2. Onboarding — 0:12–0:28
+### 2. Sign up / Log in — 0:10–0:22
+**On screen:** Fresh launch showing the **Login gate** (`app/login.tsx`). Show the
+sign-up form, type an email + password, and toggle between **Sign In** and **Sign Up**.
+Then tap **"Maybe later"** to show the skip path — and continue into onboarding from
+there.
+
+> **Recording tip:** don't create a real account live — sign-up may hit an email
+> confirmation wall and stall the take. Type the fields, then cut to either a
+> pre-made account signing in cleanly, or take the "Maybe later" path.
+
+**VO:** "Accounts are optional but useful. Sign up with an email and password and your
+progress syncs across devices through Supabase — or tap *Maybe later* and use the app
+entirely offline on the device. Nothing is gated behind an account."
+
+### 3. Onboarding — 0:22–0:36
 **On screen:** Swipe through a few onboarding steps — name, avatar (pick an emoji +
 color), grade, subjects, daily study goal. Move fast; don't type full sentences.
 
 **VO:** "First launch is a quick 7-step setup — your name, an avatar, your subjects,
 and a daily study goal. All of it is saved locally, so the app works fully offline."
 
-### 3. Dashboard + Study timer — 0:28–1:00
+### 4. Dashboard + Study timer — 0:36–1:05
 **On screen:** Land on Dashboard. Point (cursor/tap) at: the level + XP bar, the
 streak flame chip, the 2×2 stat grid (Study Time / Tasks / Sleep / Screen Time).
 Then tap **Start Study** → the timer screen. Start the timer, let it run 2–3 seconds,
@@ -69,7 +90,7 @@ Hit *Start Study* to launch the focus timer. It supports a free timer and Pomodo
 mode. Finish a session and you earn XP, keep your streak alive, and unlock
 achievements — every minute of study is one XP."
 
-### 4. Gamification — 1:00–1:35
+### 5. Gamification — 1:05–1:35
 **On screen:** Go to the **Quests & Levels** screen. Show:
 - the **Study Pet** at the top (custom SVG creature that evolves with your level),
 - the **daily quests** with their shield crests + progress bars — complete one on camera,
@@ -83,7 +104,7 @@ hand-drawn vector art that recolors to your theme. Daily quests, a level path, a
 daily treasure chest, and a quick falling-stars mini-game — all little loops that
 reward showing up. There are 20 achievements to collect across four rarity tiers."
 
-### 5. Productivity — 1:35–2:05
+### 6. Productivity — 1:35–2:02
 **On screen:** Quick tour, ~7 seconds each:
 - **Goals** — SMART goal tracker, tap through the horizon tabs (Daily/Weekly/Monthly/
   Long-term), show a goal's progress buttons.
@@ -97,17 +118,31 @@ reward showing up. There are 20 achievements to collect across four rarity tiers
 long-term horizons, tasks, a weekly schedule that merges your device and Google
 calendars, and wellness tracking for sleep and mood that can pull from Apple Health."
 
-### 6. Personalization + cross-platform — 2:05–2:20
-**On screen:** Open **Settings**. Change the **theme** (e.g. Light → Midnight) and the
-**accent color** using the custom color wheel — show the *whole app* instantly
-restyling. Then a 2-second cut to the **same app running in a browser** (web build) to
-prove it's cross-platform.
+### 7. Settings: theming, notifications, account & sync — 2:02–2:25
+**On screen:** Open **Settings** and move top to bottom through the three things worth
+showing:
 
-**VO:** "Everything is themeable — five theme styles and any accent color you want from
-a custom color wheel, and the whole app — including the artwork — recolors live. And
-the exact same codebase runs as a website."
+1. **Appearance (~10s)** — change the **theme** (e.g. Light → Midnight), then open the
+   custom **color wheel** and drag to a new accent. Show the *whole app* restyling
+   live — including the pet and quest crests. This is the money shot; give it room.
+2. **Notifications (~5s)** — scroll to the reminders: study reminder, bedtime
+   reminder, streak-at-risk alert, and the permission rows. Just toggle one.
+3. **Account & Sync (~8s)** — show the signed-in email, the last-synced timestamp, and
+   tap **☁️ Sync Now**. Then cut to the **same account in a browser** (web build) with
+   the same data and theme — that single cut proves both cross-platform *and* sync in
+   one shot.
 
-### 7. The Code — 2:20–2:55  ⭐ *required coding section*
+**VO:** "Everything is themeable — five theme styles and any accent color from a custom
+color wheel, and the whole app, including the artwork, recolors live. Settings also
+handles your reminders — study, bedtime, and a streak-at-risk nudge. And under Account,
+one tap syncs your progress to the cloud — so here's the same account, same data, same
+theme, running as a website."
+
+> **Recording tip:** have the web build already open on a second monitor / browser tab
+> and logged into the same account, so the cut lands instantly instead of waiting on a
+> page load and sign-in.
+
+### 8. The Code — 2:25–2:57  ⭐ *required coding section*
 **On screen:** Switch to the editor + a terminal running `npx expo start`. Walk through,
 briefly, with the files open:
 
@@ -135,7 +170,7 @@ from a central design system — so one accent-color change restyles the entire 
 And every integration degrades gracefully, which is how the same code runs on iOS,
 Android, and the web without breaking."
 
-### 8. Close — 2:55–3:00
+### 9. Close — 2:57–3:02
 **On screen:** Cut back to the freshly-themed Dashboard. Title card:
 *"Focus — study, leveled up."* + optional repo / links.
 
