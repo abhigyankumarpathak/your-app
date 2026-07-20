@@ -14,6 +14,7 @@ import {
     useWindowDimensions
 } from 'react-native';
 import { AVATAR_OPTIONS, useTheme } from '../context/ThemeContext';
+import { notify } from '../services/dialog';
 import { hasNotificationPermission, requestNotificationPermission } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, openHealthSettings, openScreenTimeSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
 
@@ -259,12 +260,16 @@ export default function Onboarding({ onComplete }: Props) {
 
   const handleComplete = async () => {
     try {
-      await AsyncStorage.setItem('focusUserProfile', JSON.stringify(profile));
+      const trimmed = { ...profile, name: profile.name.trim() };
+      await AsyncStorage.setItem('focusUserProfile', JSON.stringify(trimmed));
       await AsyncStorage.setItem('focusOnboardingComplete', 'true');
-      onComplete();
     } catch (e) {
       console.log('Error saving profile', e);
+      notify('Couldn’t save your profile', 'We’ll keep going anyway — you can update it later in Settings.');
     }
+    // Always advance. Storage failing shouldn't strand the user on the last
+    // onboarding screen with a button that appears to do nothing.
+    onComplete();
   };
 
   const toggleSubject = (s: string) => {
@@ -336,7 +341,7 @@ export default function Onboarding({ onComplete }: Props) {
             <Text style={dynamicStyles.stepTitle}>{STEPS[0].title}</Text>
             <Text style={dynamicStyles.stepSubtitle}>{STEPS[0].subtitle}</Text>
             <View style={styles.inputGroup}>
-              <Text style={dynamicStyles.inputLabel}>What's your name?</Text>
+              <Text style={dynamicStyles.inputLabel}>What&apos;s your name?</Text>
               <TextInput
                 style={dynamicStyles.textInput}
                 placeholder="Enter your first name"
@@ -348,7 +353,7 @@ export default function Onboarding({ onComplete }: Props) {
             </View>
             {profile.name.trim().length > 0 && (
               <Text style={dynamicStyles.welcomeText}>
-                Welcome, {profile.name}! Let's build something great together. 💪
+                Welcome, {profile.name}! Let&apos;s build something great together. 💪
               </Text>
             )}
           </View>
@@ -652,7 +657,7 @@ export default function Onboarding({ onComplete }: Props) {
             <View style={styles.emojiContainer}>
               <Text style={dynamicStyles.bigEmoji}>🚀</Text>
             </View>
-            <Text style={dynamicStyles.stepTitle}>You're all set{profile.name ? `, ${profile.name}` : ''}!</Text>
+            <Text style={dynamicStyles.stepTitle}>You&apos;re all set{profile.name ? `, ${profile.name}` : ''}!</Text>
             <Text style={dynamicStyles.stepSubtitle}>How many hours a day do you want to study?</Text>
 
             <View style={[styles.hoursRow, { gap: responsiveSpacing(10), marginBottom: responsiveSpacing(24) }]}>

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { Drawer } from 'expo-router/drawer';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, DeviceEventEmitter, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -106,6 +106,18 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
   // Lets a user proceed without an account ("Maybe later").
   const [authSkipped, setAuthSkipped] = useState(false);
 
+  // Signing out returns to the login gate. Keyed off a session -> null
+  // transition rather than `session === null` alone, so "Maybe later" users
+  // (who never had a session) aren't bounced out of the app.
+  const hadSession = useRef(false);
+  useEffect(() => {
+    if (session) hadSession.current = true;
+    else if (hadSession.current) {
+      hadSession.current = false;
+      setAuthSkipped(false);
+    }
+  }, [session]);
+
   // Wait until the SDK has finished restoring the session from storage —
   // otherwise the initial `session === null` flashes the login gate on every
   // reload before getSession() can resolve.
@@ -123,11 +135,17 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
       <Login
         onDone={(outcome) => {
           // Existing users who SIGN IN have already onboarded — skip it.
-          // Sign-up and "maybe later" fall through to onboarding.
           if (outcome === 'signIn') {
             AsyncStorage.setItem('focusOnboardingComplete', 'true');
             setOnboardingDone(true);
+          } else if (outcome === 'signUp') {
+            // A new account always onboards. Clearing the flag matters when
+            // this device already onboarded under a previous account —
+            // otherwise sign-up drops straight into the old account's app.
+            AsyncStorage.removeItem('focusOnboardingComplete');
+            setOnboardingDone(false);
           }
+          // "Maybe later" leaves the flag alone and falls through.
           setAuthSkipped(true);
         }}
       />
@@ -144,13 +162,9 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
 }
 
 export default function RootLayout() {
-  const [initializing, setInitializing] = useState(true);
-
   useEffect(() => {
-    AsyncStorage.getItem('focusOnboardingComplete').then((val) => {
-      // onboarding state will be managed via context
-      setInitializing(false);
-    });
+    // RootContent owns reading `focusOnboardingComplete`; doing it here too
+    // just added a second AsyncStorage round-trip and a second spinner.
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
         name: 'Focus Reminders',
@@ -160,14 +174,6 @@ export default function RootLayout() {
       });
     }
   }, []);
-
-  if (initializing) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
-  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

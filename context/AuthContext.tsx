@@ -12,8 +12,10 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string) => Promise<{ error?: string; needsConfirmation?: boolean }>;
+  // `error` means auth itself failed. `warning` means auth succeeded but a
+  // follow-up step (the initial sync) didn't — the caller should proceed.
+  signIn: (email: string, password: string) => Promise<{ error?: string; warning?: string }>;
+  signUp: (email: string, password: string) => Promise<{ error?: string; warning?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   pullNow: () => Promise<{ ok: boolean; hasData: boolean; error?: string }>;
@@ -65,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { error: error.message };
     const sync = await onSignedInSync();
-    if (!sync.ok && sync.error) return { error: `Signed in, but sync failed: ${sync.error}` };
+    if (!sync.ok && sync.error) return { warning: `Signed in, but sync failed: ${sync.error}` };
     return {};
   };
 
@@ -77,18 +79,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If email confirmations are enabled in Supabase, session will be null until the user confirms.
     if (!data.session) return { needsConfirmation: true };
     const sync = await onSignedInSync();
-    if (!sync.ok && sync.error) return { error: `Account created, but sync failed: ${sync.error}` };
+    if (!sync.ok && sync.error) return { warning: `Account created, but sync failed: ${sync.error}` };
     return {};
   };
 
   const signOut: AuthContextValue['signOut'] = async () => {
     const client = getSupabase();
-    if (!client) return;
-    // Push any unsaved local changes before tearing down the session.
-    await pushLocalToCloud().catch(() => undefined);
-    // Sign out from Supabase (clears session from storage)
-    await client.auth.signOut();
-    // Force clear the session state immediately
+    if (client) {
+      // Push any unsaved local changes before tearing down the session.
+      await pushLocalToCloud().catch(() => undefined);
+      // Sign out from Supabase (clears session from storage)
+      await client.auth.signOut();
+    }
+    // Always clear local session state, even with Supabase unconfigured —
+    // otherwise the button silently does nothing.
     setSession(null);
   };
 

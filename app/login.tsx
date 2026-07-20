@@ -61,6 +61,11 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
         notify(mode === 'signIn' ? 'Sign in failed' : 'Sign up failed', result.error);
         return;
       }
+      // Auth worked but sync didn't — tell the user, then carry on. Blocking
+      // here would strand them on the login screen while already signed in.
+      if ('warning' in result && result.warning) {
+        notify('Heads up', result.warning);
+      }
       if (mode === 'signUp' && 'needsConfirmation' in result && result.needsConfirmation) {
         notify(
           'Check your email',
@@ -156,7 +161,7 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
             placeholderTextColor={presetValues.textSecondary}
             secureTextEntry
             autoCapitalize="none"
-            textContentType={isSignIn ? 'password' : 'newPassword'}
+            textContentType="password"
             value={password}
             onChangeText={setPassword}
           />
