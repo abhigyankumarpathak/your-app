@@ -1,5 +1,13 @@
 # Welcome to your Expo app 👋
 
+> **A note on AI use**
+>
+> This app was built by hand. The overwhelming majority of the code, architecture, and product decisions here are my own.
+>
+> AI assistance was used in a limited, supporting role: refining visual design details, and working through a handful of errors and edge cases that were difficult or impractical to resolve on my own. Everything produced that way was reviewed and integrated by me.
+>
+> I'm disclosing this because I'd rather be upfront about where the tooling helped than leave it unsaid.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
