@@ -40,12 +40,10 @@ mode = "sequential"
 task = "shell.exec"
 args = "npm run build:web && npm run serve:web"
 
-[userenv]
-
-[userenv.shared]
-EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_LWp2m2zBSEEwHi1eS8xjVg_UI6mjP0d"
-EXPO_PUBLIC_SUPABASE_URL = "https://dfidtzpinjqrpujthtpz.supabase.co"
-EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB = "797973668829-nn2642leeba5d71jd1ble6u4u1bdtv81.apps.googleusercontent.com"
+# No [userenv] block here on purpose. The EXPO_PUBLIC_* values live in Replit
+# Secrets (Tools -> Secrets), which is not tracked in git. Publishing sometimes
+# re-writes them into this file — if a [userenv.shared] block reappears below,
+# delete it before committing. See replit.md for the list of names to set.
 
 [agent]
 expertMode = true
