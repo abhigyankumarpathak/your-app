@@ -319,13 +319,16 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 ### Sync ([services/sync.ts](services/sync.ts))
 - Local progress is serialized into a single blob and stored in a Supabase `progress` table (`{ user_id, data, updated_at }`, upserted on `user_id`).
 - **On sign-in** (`onSignedInSync`): if a cloud row exists it is pulled down (other device wins); if not, the device's existing local progress is pushed up so nothing is lost.
-- **Push** (`pushLocalToCloud`) and **pull** (`pullCloudToLocal`) can be triggered manually from Settings, and a push runs on sign-out.
-- After a pull, a `CLOUD_PULLED` device event tells caches (theme, profile, …) to re-read `AsyncStorage` so the UI reflects synced values immediately.
+- **Automatic sync** (`autoSync`) runs without any user action: on launch / session restore, when the app returns to the foreground, on a 60-second timer, and when it goes to the background. Direction is chosen by comparing the cloud row's `updated_at` against this device's last-synced watermark — a newer cloud row means another device wrote after us, so we pull; otherwise we push.
+- Background pushes hash the local blob and skip the network round-trip when nothing changed since the last successful push. Manual **Push** always sends.
+- **Push** (`pushLocalToCloud`) and **pull** (`pullCloudToLocal`) remain available manually from Settings as a forced override, and a push runs on sign-out.
+- After a pull, a `CLOUD_PULLED` device event tells caches (theme, profile, …) to re-read `AsyncStorage` so the UI reflects synced values immediately. A `CLOUD_SYNCED` event fires after any successful sync so the "last synced" timestamp refreshes on its own.
+- Sign-out clears the sync watermark (`clearSyncState`) — it belongs to the account that left, and a stale one would let the next account's `autoSync` push this device's data over its cloud row.
 - `SYNCED_KEYS` covers user data (profile, sessions, tasks, activities, wellness, goals, theme, avatar, streak, XP, achievements, quests, treasure, onboarding flag). Device-specific keys (notification IDs, permission cache, mini-game dates) are intentionally **excluded**.
 - Last successful sync time is stored in `focusLastSyncedAt`.
 
 ### Settings → Account & Sync
-Shows the signed-in email, last-synced timestamp, and **Sync Now** / **Pull from Cloud** / **Sign Out** actions. Sign-out confirms first and pushes local changes before tearing down the session.
+Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data), and sign-out confirms then pushes local changes before tearing down the session.
 
 ---
 
