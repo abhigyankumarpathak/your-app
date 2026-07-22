@@ -177,9 +177,14 @@ export default function Settings() {
       loadProfile();
       getLastSyncedAt().then(setLastSyncedAt);
     });
+    // Background syncs move the timestamp without any button being pressed.
+    const syncSub = DeviceEventEmitter.addListener('CLOUD_SYNCED', () => {
+      getLastSyncedAt().then(setLastSyncedAt);
+    });
     return () => {
       appSub.remove();
       pullSub.remove();
+      syncSub.remove();
     };
   }, []);
 
@@ -438,8 +443,11 @@ export default function Settings() {
           <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base, marginBottom: 4 }]}>
             {user.email}
           </Text>
-          <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 2, marginBottom: 14 }]}>
+          <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 2, marginBottom: 2 }]}>
             {formatSyncTime(lastSyncedAt)}
+          </Text>
+          <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 3, marginBottom: 14 }]}>
+            Syncs automatically — these buttons are only for forcing it.
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
