@@ -210,7 +210,7 @@ export default function Schedule() {
         <View style={[styles.section, { backgroundColor: presetValues.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
-              📆 This Week's Events
+              📆 This Week&apos;s Events
             </Text>
             {hasEventSource && (
               <TouchableOpacity onPress={loadCalendarEvents}>
