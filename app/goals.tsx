@@ -514,7 +514,7 @@ function CreateModal({ draft, setDraft, step, setStep, color, presetValues, font
             <View style={[styles.smartPreview, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
               <Text style={[styles.smartPreviewTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>🧠 Next: SMART Criteria</Text>
               <Text style={[styles.smartPreviewSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
-                We'll guide you through each letter to make your goal powerful and achievable.
+                We&apos;ll guide you through each letter to make your goal powerful and achievable.
               </Text>
               <View style={styles.smartPills}>
                 {SMART_FIELDS.map((f) => (

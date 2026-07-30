@@ -657,7 +657,7 @@ export default function Settings() {
       {IS_WEB && avatarImage && !photoIsLoadable && (
         <View style={[styles.webNotice, { backgroundColor: presetValues.bgSecondary, borderColor: presetValues.borderColor }]}>
           <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1, lineHeight: 20 }]}>
-            Your photo was set on a phone and isn't viewable in the browser. Re-pick it on your phone while signed in to sync it everywhere.
+            Your photo was set on a phone and isn&apos;t viewable in the browser. Re-pick it on your phone while signed in to sync it everywhere.
           </Text>
         </View>
       )}
@@ -735,7 +735,7 @@ export default function Settings() {
       </View>
       {!mediaPermission && !avatarImage && (
         <Text style={[styles.permHint, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-          You'll be asked to allow photo library access.
+          You&apos;ll be asked to allow photo library access.
         </Text>
       )}
 
@@ -1100,7 +1100,7 @@ export default function Settings() {
           <View style={[styles.notifRow, { marginTop: 12 }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.fieldLabel, { color: presetValues.text, fontSize: fontSizes.base }]}>🔥 Streak At Risk (8 PM)</Text>
-              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Alert if you haven't studied yet today</Text>
+              <Text style={[styles.notifSub, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>Alert if you haven&apos;t studied yet today</Text>
             </View>
             <Switch value={streakReminderOn} onValueChange={toggleStreakReminder}
               trackColor={{ false: presetValues.bgSecondary, true: '#6366F1' }} />

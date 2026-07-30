@@ -132,7 +132,7 @@ export default function ScreenTime() {
         {Platform.OS === 'ios' && (
           <View style={[styles.iosNotice, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
             <Text style={[styles.iosNoticeTitle, { color: presetValues.text, fontSize: fontSizes.base }]}>
-              ⚠️ Why isn't this automatic?
+              ⚠️ Why isn&apos;t this automatic?
             </Text>
             <Text style={[styles.iosNoticeText, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
               Apple restricts Screen Time data to its own app and a handful of approved parental-control apps (via the Family Controls entitlement). For now, tap the button below to peek at your real Screen Time, then enter the total here.
@@ -191,7 +191,7 @@ export default function ScreenTime() {
         {/* Log today */}
         <View style={[styles.card, { backgroundColor: presetValues.cardBg, borderColor: presetValues.borderColor }]}>
           <Text style={[styles.cardTitle, { color: presetValues.text, fontSize: fontSizes.title }]}>
-            📋 Log Today's Usage
+            📋 Log Today&apos;s Usage
           </Text>
           <Text style={[styles.inputLabel, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
             Hours spent on your phone today
