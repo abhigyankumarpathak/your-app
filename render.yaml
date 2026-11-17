@@ -1,0 +1,78 @@
+# Render Blueprint — deploys the Focus web app as a free static site.
+#
+# One-click setup: Render Dashboard → New → Blueprint → pick this repo.
+# Render will ask for the values marked `sync: false` below (your Supabase
+# project URL and anon key — see DEVELOPMENT.md › Cross-device sync).
+#
+# EXPO_PUBLIC_* values are baked into the JS bundle at build time, so after
+# changing one in the Render dashboard, trigger a new deploy.
+
+services:
+  - type: web
+    runtime: static
+    name: focus-web
+    buildCommand: npm ci && npm run build:web
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Metro needs extra heap headroom for a ~1,500-module bundle.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=4096
+      - key: EXPO_NO_TELEMETRY
+        value: "1"
+      # Required for sign-in and cross-device sync. Without them the site still
+      # works, but accounts are disabled.
+      - key: EXPO_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: EXPO_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      # Optional: add EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB in the dashboard later to
+      # enable "Connect Google Calendar" (see DEVELOPMENT.md › Google Calendar).
+    headers:
+      # Bundles in /_expo are content-hashed, so they can be cached forever.
+      - path: /_expo/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+    # Expo's static export writes each screen as <name>.html; map the clean
+    # URLs the app links to onto those files.
+    routes:
+      - type: rewrite
+        source: /study
+        destination: /study.html
+      - type: rewrite
+        source: /game
+        destination: /game.html
+      - type: rewrite
+        source: /goals
+        destination: /goals.html
+      - type: rewrite
+        source: /tasks
+        destination: /tasks.html
+      - type: rewrite
+        source: /schedule
+        destination: /schedule.html
+      - type: rewrite
+        source: /wellness
+        destination: /wellness.html
+      - type: rewrite
+        source: /screentime
+        destination: /screentime.html
+      - type: rewrite
+        source: /settings
+        destination: /settings.html
+      - type: rewrite
+        source: /login
+        destination: /login.html
+      - type: rewrite
+        source: /onboarding
+        destination: /onboarding.html

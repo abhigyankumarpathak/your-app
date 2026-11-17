@@ -94,6 +94,19 @@ Data persists to `localStorage` via AsyncStorage.
 Health and screen-time screens still work on the web — they fall back to manual
 entry rather than disappearing.
 
+## Deploying to Render (public website)
+
+[`render.yaml`](render.yaml) is a Render Blueprint that publishes the web app as a free static site.
+
+1. In the [Render Dashboard](https://dashboard.render.com), choose **New → Blueprint** and connect this repo. Pick the branch that contains `render.yaml`.
+2. When prompted, enter `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. These are the same values as your `.env`.
+3. Click **Apply**. Render runs `npm ci && npm run build:web` and serves `dist/`.
+4. Once it's live, copy the `https://….onrender.com` URL and:
+   - In Supabase › **Authentication → URL Configuration**, set **Site URL** to it so email-confirmation links open the website.
+   - If you use Google Calendar, add the URL to the web OAuth client's **Authorized JavaScript origins** and set `EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB` in Render.
+
+`EXPO_PUBLIC_*` values are baked in at build time, so redeploy after changing any of them.
+
 ## Deploying to Replit
 
 `.replit` is checked in and configured, so importing this repo into Replit works
