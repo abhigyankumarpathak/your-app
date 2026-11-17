@@ -1,5 +1,9 @@
 # Focus
 
+### ▶️ [**Try Focus in your browser → focus-web-1zap.onrender.com**](https://focus-web-1zap.onrender.com/)
+
+Nothing to download, and an account is optional: tap **"Maybe later"** to jump straight in.
+
 **A study companion for students.** Time your study sessions, keep track of tasks and goals, look after your sleep and screen time, and earn XP, streaks and badges along the way.
 
 Focus runs on iPhone, Android and the web. You can use it without an account. Creating one just lets your progress follow you across devices.
@@ -123,3 +127,9 @@ npm run web              # opens Focus in your browser
 To run it on your phone instead, install the free **Expo Go** app, run `npm run go`, and scan the QR code. Without Supabase keys, everything works except accounts and sync.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the full setup, including building, deploying and Google Calendar, and [FEATURES.md](FEATURES.md) for a detailed reference of how everything works.
+
+---
+
+## License
+
+Focus is open source under the [MIT License](LICENSE).
