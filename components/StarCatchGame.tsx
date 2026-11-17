@@ -80,7 +80,7 @@ export default function StarCatchGame({
     ]));
     loop.start();
     return () => loop.stop();
-  }, []);
+  }, [introPulse]);
 
   const cleanup = () => {
     if (tickRef.current)  clearInterval(tickRef.current);
@@ -326,7 +326,7 @@ function FloatingScore({ x, y, text, color }: { x: number; y: number; text: stri
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true, easing: Easing.out(Easing.quad) }).start();
-  }, []);
+  }, [anim]);
   return (
     <Animated.Text
       pointerEvents="none"

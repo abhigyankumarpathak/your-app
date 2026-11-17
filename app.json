@@ -11,9 +11,6 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSHealthShareUsageDescription": "This app needs access to your health data to track sleep and screen time",
-        "NSHealthUpdateUsageDescription": "This app needs access to your health data to store sleep information",
-        "NSPhotoLibraryUsageDescription": "Focus uses your photo library so you can pick a custom profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.amitpathak.focus"
@@ -25,14 +22,19 @@
       },
       "permissions": [
         "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ],
+      "package": "com.amitpathak.focus",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
         "android.permission.QUERY_ALL_PACKAGES",
         "android.permission.PACKAGE_USAGE_STATS",
         "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
-      ],
-      "package": "com.amitpathak.focus"
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "output": "static",
@@ -43,8 +45,9 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Focus reads your sleep, step, and activity data so you don't have to enter it manually.",
-          "NSHealthUpdateUsageDescription": "Focus can save mindful-minute sessions back to Apple Health when you complete a study block."
+          "NSHealthShareUsageDescription": "Focus reads your sleep, steps, exercise minutes and workouts so you can see them next to your study habits without typing them in.",
+          "NSHealthUpdateUsageDescription": "Focus does not write any data to Apple Health.",
+          "background": false
         }
       ],
       [
@@ -57,14 +60,16 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Allow Focus to access your calendar to show your schedule.",
-          "remindersPermission": "Allow Focus to access your reminders."
+          "calendarPermission": "Focus reads the events in your calendar so it can show them on your weekly Schedule screen.",
+          "remindersPermission": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Focus uses your photo library so you can pick a custom profile picture."
+          "photosPermission": "Focus uses your photo library so you can pick a custom profile picture.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [

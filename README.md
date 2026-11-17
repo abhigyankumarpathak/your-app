@@ -249,7 +249,24 @@ create policy "Users insert their own progress"
 create policy "Users update their own progress"
   on public.progress for update
   using (auth.uid() = user_id);
+
+-- Lets a signed-in user delete their own account from Settings › Account & Sync.
+-- Required by Apple (guideline 5.1.1(v)) for any app that offers sign-up.
+-- Deleting the auth user cascades to their progress row.
+create or replace function public.delete_user()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+
+revoke all on function public.delete_user() from public, anon;
+grant execute on function public.delete_user() to authenticated;
 ```
+
+> Already set up the table before? Run just the `delete_user` part — without it, **Delete Account** in Settings shows an error.
 
 ### 4. (Optional) Disable email confirmations during development
 

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -31,46 +32,40 @@ export default function Wellness() {
   const [screenTime, setScreenTime] = useState('');
   const [mood, setMood] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
-  const [stats, setStats] = useState({ avgSleep: 0, avgScreen: 0, logsCount: 0 });
-
-  useEffect(() => {
-    loadLogs();
-  }, []);
-
-  useEffect(() => {
-    calculateStats();
+  const stats = useMemo(() => {
+    if (logs.length === 0) return { avgSleep: 0, avgScreen: 0, logsCount: 0 };
+    const avgSleep = logs.reduce((sum, log) => sum + (parseFloat(log.sleepDuration) || 0), 0) / logs.length;
+    const avgScreen = logs.reduce((sum, log) => sum + (parseFloat(log.screenTime) || 0), 0) / logs.length;
+    return {
+      avgSleep: Math.round(avgSleep * 10) / 10,
+      avgScreen: Math.round(avgScreen * 10) / 10,
+      logsCount: logs.length,
+    };
   }, [logs]);
+
+  useFocusEffect(useCallback(() => {
+    loadLogs();
+  }, []));
 
   const loadLogs = async () => {
     try {
       const data = await AsyncStorage.getItem('focusWellness');
-      if (data) setLogs(JSON.parse(data));
+      setLogs(data ? JSON.parse(data) : []);
     } catch (error) {
       console.log('Error loading logs:', error);
     }
   };
 
-  const calculateStats = () => {
-    if (logs.length === 0) {
-      setStats({ avgSleep: 0, avgScreen: 0, logsCount: 0 });
-      return;
-    }
-
-    const avgSleep =
-      logs.reduce((sum, log) => sum + (parseFloat(log.sleepDuration) || 0), 0) / logs.length;
-    const avgScreen =
-      logs.reduce((sum, log) => sum + (parseFloat(log.screenTime) || 0), 0) / logs.length;
-
-    setStats({
-      avgSleep: Math.round(avgSleep * 10) / 10,
-      avgScreen: Math.round(avgScreen * 10) / 10,
-      logsCount: logs.length,
-    });
-  };
-
   const logToday = async () => {
     if (!bedtime || !wakeTime || !sleepDuration || !screenTime) {
-      alert('Please fill in all fields');
+      notify('Missing info', 'Please fill in all fields.');
+      return;
+    }
+    const sleepHours = parseFloat(sleepDuration);
+    const screenHours = parseFloat(screenTime);
+    if (!Number.isFinite(sleepHours) || sleepHours < 0 || sleepHours > 24 ||
+        !Number.isFinite(screenHours) || screenHours < 0 || screenHours > 24) {
+      notify('Check your numbers', 'Sleep and screen time must be between 0 and 24 hours.');
       return;
     }
 
@@ -79,15 +74,21 @@ export default function Wellness() {
       date: new Date().toLocaleDateString(),
       bedtime,
       wakeTime,
-      sleepDuration: parseFloat(sleepDuration),
-      screenTime: parseFloat(screenTime),
+      sleepDuration: sleepHours,
+      screenTime: screenHours,
       mood: mood || 'Normal',
       ...(todayHealth?.steps != null && { steps: todayHealth.steps }),
       ...(todayHealth?.exerciseMinutes != null && { exerciseMinutes: todayHealth.exerciseMinutes }),
       ...(todayHealth?.workouts.length ? { workoutsCount: todayHealth.workouts.length } : {}),
     };
 
-    const updated = [newLog, ...logs];
+    // One entry per day: merge into today's entry (which the Screen Time screen
+    // may already have created) instead of adding a duplicate that would skew
+    // the averages.
+    const existing = logs.find((l) => l.date === newLog.date);
+    const updated = existing
+      ? logs.map((l) => (l === existing ? { ...existing, ...newLog, id: existing.id } : l))
+      : [newLog, ...logs];
     try {
       await AsyncStorage.setItem('focusWellness', JSON.stringify(updated));
       setLogs(updated);

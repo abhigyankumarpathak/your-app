@@ -16,7 +16,7 @@ function StatCard({ label, value, unit, icon, color, route, presetValues, fontSi
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fade, { toValue: 1, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.quad) }).start();
-  }, []);
+  }, [fade, delay]);
   return (
     <Animated.View style={{
       opacity: fade,
@@ -81,7 +81,6 @@ export default function Dashboard() {
   const { accentColor, presetValues, fontSizes } = useTheme();
   const [stats, setStats] = useState({ studyHours: 0, tasks: 0, sleepHours: 0, screenTime: 0 });
   const [streak, setStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
   const [xp, setXp] = useState(0);
   const [achievements, setAchievements] = useState<string[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
@@ -101,11 +100,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     Animated.spring(heroAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 9 }).start();
-    Animated.loop(Animated.sequence([
+    const flame = Animated.loop(Animated.sequence([
       Animated.timing(flameAnim, { toValue: 1.18, duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
       Animated.timing(flameAnim, { toValue: 1,    duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-    ])).start();
-  }, []);
+    ]));
+    flame.start();
+    return () => flame.stop();
+  }, [heroAnim, flameAnim]);
 
   const loadAll = async () => {
     try {
@@ -144,7 +145,6 @@ export default function Dashboard() {
         getTodayQuestDisplays(allSessions, goalHours),
       ]);
       setStreak(streakData.current);
-      setLongestStreak(streakData.longest);
       setXp(xpVal);
       setAchievements(earned);
       setQuestDisplays(quests);
@@ -156,7 +156,6 @@ export default function Dashboard() {
   const level = getLevel(xp);
   const xpInLevel = xp - level * 100;
   const xpPct = xpInLevel / 100;
-  const goalToday = stats.studyHours; // already hours
   const doneQuests = questDisplays.filter(q => q.completed).length;
 
   return (

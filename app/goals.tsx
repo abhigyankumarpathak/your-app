@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-    Alert,
     Modal,
     ScrollView,
     StyleSheet,
@@ -180,12 +179,14 @@ export default function Goals() {
   const [studyGoalHours, setStudyGoalHours] = useState('2');
   const [todayStudyHours, setTodayStudyHours] = useState(0);
 
-  useEffect(() => { loadGoals(); loadUser(); }, []);
-
   useFocusEffect(
     useCallback(() => {
+      loadGoals();
+      loadUser();
       loadTodayStudy();
-      AsyncStorage.getItem('focusTasks').then((d) => { if (d) setTasks(JSON.parse(d)); });
+      AsyncStorage.getItem('focusTasks')
+        .then((d) => setTasks(d ? JSON.parse(d) : []))
+        .catch(() => undefined);
     }, [])
   );
 
@@ -197,7 +198,7 @@ export default function Goals() {
         setUserName(parsed.name || '');
         setStudyGoalHours(parsed.studyGoalHours || '2');
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const loadTodayStudy = async () => {
@@ -211,21 +212,21 @@ export default function Goals() {
           .reduce((sum: number, s: any) => sum + s.duration, 0);
         setTodayStudyHours(Math.round((todayTotal / 3600) * 100) / 100);
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const loadGoals = async () => {
     try {
       const data = await AsyncStorage.getItem('focusGoals');
-      if (data) setGoals(JSON.parse(data));
-    } catch (_) {}
+      setGoals(data ? JSON.parse(data) : []);
+    } catch {}
   };
 
   const saveGoals = async (updated: SmartGoal[]) => {
     try {
       await AsyncStorage.setItem('focusGoals', JSON.stringify(updated));
       setGoals(updated);
-    } catch (_) {}
+    } catch {}
   };
 
   const openCreate = (period: GoalPeriod) => {

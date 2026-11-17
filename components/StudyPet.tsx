@@ -49,15 +49,17 @@ export default function StudyPet({ level, size = 92, color, textColor, textSecon
   const ring = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(Animated.sequence([
+    const b = Animated.loop(Animated.sequence([
       Animated.timing(bounce, { toValue: 1, duration: 1400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
       Animated.timing(bounce, { toValue: 0, duration: 1400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-    ])).start();
-    Animated.loop(Animated.sequence([
+    ]));
+    const r = Animated.loop(Animated.sequence([
       Animated.timing(ring, { toValue: 1, duration: 2600, useNativeDriver: true, easing: Easing.out(Easing.ease) }),
       Animated.timing(ring, { toValue: 0, duration: 0, useNativeDriver: true }),
-    ])).start();
-  }, []);
+    ]));
+    b.start(); r.start();
+    return () => { b.stop(); r.stop(); };
+  }, [bounce, ring]);
 
   return (
     <View style={[styles.wrap, { backgroundColor: bg, borderColor: alpha(color, 0.25) }, elevation(2)]}>

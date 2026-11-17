@@ -125,13 +125,39 @@ export const claimDailyTreasure = async (): Promise<DailyTreasure> => {
   return treasure;
 };
 
+const dayString = (daysAgo: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toLocaleDateString();
+};
+
 export const loadStreakData = async (): Promise<StreakData> => {
+  const empty: StreakData = { current: 0, longest: 0, lastDate: '' };
   try {
     const raw = await AsyncStorage.getItem('focusStreak');
-    return raw ? JSON.parse(raw) : { current: 0, longest: 0, lastDate: '' };
+    const data: StreakData = raw ? { ...empty, ...JSON.parse(raw) } : empty;
+    // A streak only survives if the last study day was today or yesterday —
+    // otherwise it's broken, even though nothing has rewritten the stored value.
+    if (data.lastDate !== dayString(0) && data.lastDate !== dayString(1)) {
+      return { ...data, current: 0 };
+    }
+    return data;
   } catch {
-    return { current: 0, longest: 0, lastDate: '' };
+    return empty;
   }
+};
+
+/** Consecutive study days ending today (or yesterday, if today has no session yet). */
+const computeStreak = (sessions: any[]): { current: number; lastDate: string } => {
+  const dates = new Set(sessions.map((s) => s.date));
+  let offset = dates.has(dayString(0)) ? 0 : 1;
+  const lastDate = dates.has(dayString(offset)) ? dayString(offset) : '';
+  let current = 0;
+  while (dates.has(dayString(offset))) {
+    current++;
+    offset++;
+  }
+  return { current, lastDate };
 };
 
 export const loadXP = async (): Promise<number> => {
@@ -161,24 +187,16 @@ export const updateStudyStats = async (
   const nowHour = new Date().getHours();
 
   // ── Streak ───────────────────────────────────────────────────────────────
+  // Derived from the session dates, so back-dated manual logs and deleted
+  // sessions are counted correctly instead of always crediting "today".
   const streak = await loadStreakData();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString();
-
-  let newStreak = { ...streak };
-  if (streak.lastDate !== today) {
-    if (streak.lastDate === yesterdayStr) {
-      newStreak.current += 1;
-    } else if (streak.lastDate === '') {
-      newStreak.current = 1;
-    } else {
-      newStreak.current = 1;
-    }
-    newStreak.lastDate = today;
-    newStreak.longest = Math.max(newStreak.longest, newStreak.current);
-    await AsyncStorage.setItem('focusStreak', JSON.stringify(newStreak));
-  }
+  const computed = computeStreak(sessions);
+  const newStreak: StreakData = {
+    current: computed.current,
+    longest: Math.max(streak.longest, computed.current),
+    lastDate: computed.lastDate,
+  };
+  await AsyncStorage.setItem('focusStreak', JSON.stringify(newStreak));
 
   // ── XP ───────────────────────────────────────────────────────────────────
   const sorted = [...sessions].sort((a, b) => b.id - a.id);

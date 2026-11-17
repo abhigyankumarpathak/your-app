@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
@@ -24,23 +25,19 @@ function WeekBar({ day, hours, max, accent }: { day: string; hours: number; max:
 
 export default function ScreenTime() {
   const { accentColor, presetValues, fontSizes } = useTheme();
-  const [logs, setLogs] = useState<any[]>([]);
   const [todayInput, setTodayInput] = useState('');
   const [stats, setStats] = useState({ today: 0, weekAvg: 0, weekTotal: 0 });
   const [weekData, setWeekData] = useState<{ day: string; hours: number }[]>([]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     loadLogs();
-  }, []);
+  }, []));
 
   const loadLogs = async () => {
     try {
       const data = await AsyncStorage.getItem('focusWellness');
-      if (data) {
-        const parsed = JSON.parse(data);
-        setLogs(parsed);
-        buildStats(parsed);
-      }
+      const parsed = data ? JSON.parse(data) : [];
+      buildStats(parsed);
     } catch (e) {
       console.log('Error loading logs:', e);
     }
@@ -93,7 +90,6 @@ export default function ScreenTime() {
       await AsyncStorage.setItem('focusWellness', JSON.stringify(allLogs));
       setTodayInput('');
       buildStats(allLogs);
-      setLogs(allLogs);
       notify('Saved!', `Screen time logged as ${hours}h today.`);
     } catch (e) {
       console.log('Save error:', e);
@@ -101,14 +97,12 @@ export default function ScreenTime() {
   };
 
   const openDeviceScreenTime = () => {
+    // Neither OS offers a public deep link to its usage dashboard (and Apple
+    // rejects private "App-prefs:" URLs), so point the way instead.
     if (Platform.OS === 'ios') {
-      Linking.openURL('App-prefs:root=SCREEN_TIME').catch(() =>
-        Linking.openSettings()
-      );
+      notify('Open Screen Time', 'Open the Settings app and tap Screen Time to see today\'s usage, then log it here.');
     } else {
-      Linking.openURL('android.settings.USAGE_ACCESS_SETTINGS').catch(() =>
-        notify('Open Screen Time', 'Go to Settings > Digital Wellbeing to view your screen time.')
-      );
+      notify('Open Screen Time', 'Open Settings › Digital Wellbeing & parental controls to see today\'s usage, then log it here.');
     }
   };
 

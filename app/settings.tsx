@@ -9,13 +9,14 @@ import { accentGradient } from '../theme/design';
 import { useAuth } from '../context/AuthContext';
 import { useAppState } from '../context/AppStateContext';
 import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
-import { areNotificationsAvailable, cancelAllNotifications, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
+import { areNotificationsAvailable, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, isCalendarAvailable, openHealthSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
 import { isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
 import { isGoogleCalendarConfigured, isGoogleSignedIn, signInToGoogle, signOutGoogle } from '../services/googleCalendar';
 import { getLastSyncedAt } from '../services/sync';
 import { confirm, notify } from '../services/dialog';
 import { toAvatarDataUrl } from '../services/avatar';
+import { wipeLocalData } from '../services/localData';
 
 const IS_WEB = Platform.OS === 'web';
 const NOTIFICATIONS_AVAILABLE = areNotificationsAvailable();
@@ -58,11 +59,12 @@ type SectionKey =
   | 'animations'
   | 'notifications'
   | 'tips'
+  | 'privacy'
   | 'danger';
 
 export default function Settings() {
   const router = useRouter();
-  const { user, signOut, syncNow, pullNow } = useAuth();
+  const { user, signOut, deleteAccount, syncNow, pullNow } = useAuth();
   const { triggerReset } = useAppState();
   const {
     colorName, setTheme, accentColor, customColor, setCustomColor,
@@ -128,6 +130,23 @@ export default function Settings() {
       { confirmText: 'Sign Out', destructive: true }
     );
     if (ok) await signOut();
+  };
+
+  const [deleting, setDeleting] = useState(false);
+  const handleDeleteAccount = async () => {
+    const ok = await confirm(
+      'Delete account?',
+      'This permanently deletes your Focus account and all of your synced data, and erases this device\'s data too. This cannot be undone.',
+      { confirmText: 'Delete Account', destructive: true }
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const result = await deleteAccount();
+      if (result.error) notify('Could not delete account', result.error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const formatSyncTime = (iso: string | null) => {
@@ -292,7 +311,7 @@ export default function Settings() {
     try {
       const data = await AsyncStorage.getItem('focusUserProfile');
       if (data) setProfile(JSON.parse(data));
-    } catch (_) {}
+    } catch {}
   };
 
   const saveProfile = async () => {
@@ -300,7 +319,7 @@ export default function Settings() {
       await AsyncStorage.setItem('focusUserProfile', JSON.stringify(profile));
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2000);
-    } catch (_) {
+    } catch {
       notify('Error', 'Could not save profile.');
     }
   };
@@ -315,26 +334,17 @@ export default function Settings() {
   const handleReset = async () => {
     const ok = await confirm(
       'Reset App',
-      'This will clear all your data and take you back to the beginning. This cannot be undone.',
+      user
+        ? 'This will clear all your data and take you back to the beginning. Because you\'re signed in, your cloud copy will be replaced with the fresh start too. This cannot be undone.'
+        : 'This will clear all your data and take you back to the beginning. This cannot be undone.',
       { confirmText: 'Reset Everything', destructive: true }
     );
     if (!ok) return;
     try {
-      await cancelAllNotifications();
-      await AsyncStorage.multiRemove([
-        'focusOnboardingComplete', 'focusUserProfile', 'focusSessions',
-        'focusTasks', 'focusActivities', 'focusWellness', 'focusGoals',
-        'focusThemeColor', 'focusCustomColor', 'focusThemePreset',
-        'focusFontSize', 'focusEnableAnimations',
-        'focusAvatar', 'focusAvatarBg', 'focusAvatarImage',
-        'focusStreak', 'focusXP', 'focusAchievements', 'focusPomodoroEnabled',
-        'focusDailyTreasure', 'focusDailyQuests',
-        'focusNotifPermission', 'focusStudyReminderOn', 'focusStudyReminderTime',
-        'focusBedtimeReminderOn', 'focusBedtimeReminderTime', 'focusStreakReminderOn',
-      ]);
+      await wipeLocalData();
       triggerReset();
       DeviceEventEmitter.emit('RESET_APP');
-    } catch (_) {
+    } catch {
       notify('Error', 'Could not reset the app. Please try again.');
     }
   };
@@ -378,6 +388,7 @@ export default function Settings() {
     animations: 'Animations',
     notifications: 'Notifications & Permissions',
     tips: 'Tips for Better Focus',
+    privacy: 'Privacy',
     danger: 'Reset App',
   };
 
@@ -420,6 +431,7 @@ export default function Settings() {
       title: 'About',
       rows: [
         { key: 'tips', icon: '💡', title: 'Tips for Better Focus' },
+        { key: 'privacy', icon: '🔒', title: 'Privacy', subtitle: 'What Focus stores and why' },
       ],
     },
     {
@@ -488,6 +500,25 @@ export default function Settings() {
             <Text style={[styles.saveBtnText, { color: presetValues.text, fontSize: fontSizes.base }]}>
               Sign Out
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveBtn, {
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              borderColor: '#EF4444',
+              marginTop: 10,
+              opacity: deleting ? 0.7 : 1,
+            }]}
+            onPress={handleDeleteAccount}
+            disabled={deleting}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+          >
+            {deleting
+              ? <ActivityIndicator color="#EF4444" />
+              : <Text style={[styles.saveBtnText, { color: '#EF4444', fontSize: fontSizes.base }]}>
+                  Delete Account
+                </Text>}
           </TouchableOpacity>
         </>
       ) : (
@@ -1127,6 +1158,27 @@ export default function Settings() {
     </View>
   );
 
+  const renderPrivacy = () => (
+    <View
+      style={[
+        styles.infoSection,
+        {
+          backgroundColor: presetValues.cardBg,
+          borderColor: presetValues.borderColor,
+        },
+      ]}
+    >
+      <Text style={[styles.infoText, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+        • Everything you enter (study sessions, tasks, goals, wellness logs, profile and settings) is stored on this device.{'\n'}
+        • If you create an account, that same data is saved to our cloud database so it can sync between your devices. It is only readable by your account.{'\n'}
+        • Calendar events are read on your device to show on the Schedule screen and are never saved or uploaded.{'\n'}
+        • Apple Health is only read when you tap Sync from Apple Health. If you then save that day&apos;s wellness log, the numbers in it (sleep, steps, exercise minutes, workout count) are saved with your log like anything you type, and sync to your account if you&apos;re signed in. Health data is never used for advertising or shared with anyone.{'\n'}
+        • Focus has no ads, no tracking, and never sells or shares your data.{'\n'}
+        • You can erase this device&apos;s data with Reset App, or permanently delete your account and cloud data from Account &amp; Sync › Delete Account.
+      </Text>
+    </View>
+  );
+
   const renderDanger = () => (
     <View style={[styles.dangerSection, { borderColor: '#EF4444', backgroundColor: presetValues.cardBg }]}>
       <Text style={[styles.dangerText, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
@@ -1149,6 +1201,7 @@ export default function Settings() {
       case 'animations': return renderAnimations();
       case 'notifications': return renderNotifications();
       case 'tips': return renderTips();
+      case 'privacy': return renderPrivacy();
       case 'danger': return renderDanger();
     }
   };

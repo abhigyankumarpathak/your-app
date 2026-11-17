@@ -114,14 +114,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       'focusAvatarImage',
     ]);
     const [color, custom, presetVal, fontSizeVal, animVal, av, avBg, avImg] = values;
-    if (color[1] && (THEME_COLORS as Record<string, string>)[color[1]]) setColorName(color[1]);
-    if (custom[1]) setCustomColorState(custom[1]);
-    else setCustomColorState(null);
-    if (presetVal[1] && (THEME_PRESETS as Record<string, any>)[presetVal[1]]) setPresetState(presetVal[1]);
-    if (fontSizeVal[1] && (FONT_SIZES as Record<string, any>)[fontSizeVal[1]]) setFontSizeState(fontSizeVal[1]);
-    if (animVal[1] !== null) setEnableAnimations(animVal[1] === 'true');
-    if (av[1]) setAvatarState(av[1]);
-    if (avBg[1]) setAvatarBgState(avBg[1]);
+    // Missing keys fall back to the defaults, so a reset or a cloud pull that
+    // lacks a key doesn't leave the previous value on screen.
+    setColorName(color[1] && (THEME_COLORS as Record<string, string>)[color[1]] ? color[1] : 'Blue');
+    setCustomColorState(custom[1] || null);
+    setPresetState(presetVal[1] && (THEME_PRESETS as Record<string, any>)[presetVal[1]] ? presetVal[1] : 'Light');
+    setFontSizeState(fontSizeVal[1] && (FONT_SIZES as Record<string, any>)[fontSizeVal[1]] ? fontSizeVal[1] : 'Medium');
+    setEnableAnimations(animVal[1] === null ? true : animVal[1] === 'true');
+    setAvatarState(av[1] || '🦊');
+    setAvatarBgState(avBg[1] || '#3B82F6');
     setAvatarImageState(avImg[1] ?? null);
   };
 
@@ -130,7 +131,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const sub = DeviceEventEmitter.addListener('CLOUD_PULLED', () => {
       loadFromStorage();
     });
-    return () => sub.remove();
+    const resetSub = DeviceEventEmitter.addListener('RESET_APP', () => {
+      loadFromStorage();
+    });
+    return () => {
+      sub.remove();
+      resetSub.remove();
+    };
   }, []);
 
   const setTheme = async (name: string) => {

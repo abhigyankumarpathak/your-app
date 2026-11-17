@@ -78,11 +78,14 @@ export const openScreenTimeSettings = () => {
     return;
   }
   if (Platform.OS === 'ios') {
-    Linking.openURL('App-prefs:root=SCREEN_TIME').catch(() => Linking.openSettings());
-  } else {
-    Linking.openURL('android.settings.USAGE_ACCESS_SETTINGS').catch(() =>
-      Alert.alert('Screen Time', 'Go to Settings > Digital Wellbeing & Parental Controls to grant usage access.')
+    // Apple only allows the public settings URL; private "App-prefs:" URLs
+    // are rejected in App Review (guideline 2.5.1).
+    Alert.alert(
+      'Screen Time',
+      'Open the Settings app and tap Screen Time to see how long you used your phone today.',
     );
+  } else {
+    Alert.alert('Screen Time', 'Open Settings › Digital Wellbeing & parental controls to see today\'s usage.');
   }
 };
 
@@ -95,9 +98,14 @@ export const openHealthSettings = () => {
     return;
   }
   if (Platform.OS === 'ios') {
-    Linking.openURL('App-prefs:root=Privacy&path=HEALTH').catch(() => Linking.openSettings());
+    // Health access is managed inside the Health app and there's no public
+    // deep link to it, so explain where to go.
+    Alert.alert(
+      'Health Access',
+      'Open the Health app, tap your profile picture, then Apps › Focus to choose what Focus can read.',
+    );
   } else {
-    Linking.openURL('android.settings.HEALTH_CONNECT_SETTINGS').catch(() =>
+    Linking.sendIntent('android.settings.HEALTH_CONNECT_SETTINGS').catch(() =>
       Alert.alert('Health Access', 'Open the Health Connect app and grant this app access to your health data.')
     );
   }

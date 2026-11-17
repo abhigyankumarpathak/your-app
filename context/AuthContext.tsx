@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, DeviceEventEmitter } from 'react-native';
+import { wipeLocalData } from '../services/localData';
 import { getSupabase } from '../services/supabase';
 import { autoSync, clearSyncState, onSignedInSync, pullCloudToLocal, pushLocalToCloud } from '../services/sync';
 
@@ -25,6 +26,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error?: string; warning?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string; warning?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error?: string }>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   pullNow: () => Promise<{ ok: boolean; hasData: boolean; error?: string }>;
 }
@@ -155,6 +157,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  // Permanently deletes the signed-in account and its cloud data, then wipes
+  // this device. Needs the `delete_user` SQL function from README.md — the
+  // anon key can't delete auth users on its own.
+  const deleteAccount: AuthContextValue['deleteAccount'] = async () => {
+    const client = getSupabase();
+    if (!client || !session) return { error: 'You are not signed in.' };
+    const { error } = await client.rpc('delete_user');
+    if (error) return { error: error.message };
+    // The user row is gone, so the server session is already dead — only the
+    // local copy needs clearing.
+    await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    await wipeLocalData({ includeSyncState: true }).catch(() => undefined);
+    await clearSyncState().catch(() => undefined);
+    setSession(null);
+    DeviceEventEmitter.emit('RESET_APP');
+    return {};
+  };
+
   const syncNow: AuthContextValue['syncNow'] = async () => {
     const result = await pushLocalToCloud();
     if (result.ok) DeviceEventEmitter.emit(CLOUD_SYNCED_EVENT);
@@ -173,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, syncNow, pullNow }}
+      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, deleteAccount, syncNow, pullNow }}
     >
       {children}
     </AuthContext.Provider>

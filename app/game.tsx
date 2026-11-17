@@ -195,7 +195,7 @@ function LevelPathCanvas({ pathLevels, currentLevel, accentColor, presetValues, 
     ]));
     p.start(); g.start();
     return () => { p.stop(); g.stop(); };
-  }, []);
+  }, [pulseAnim, glowAnim]);
 
   return (
     <View style={{ height: totalH, position: 'relative' }}>
@@ -345,17 +345,19 @@ export default function GameScreen() {
   const rewardScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(Animated.sequence([
+    const pulse = Animated.loop(Animated.sequence([
       Animated.timing(chestPulse, { toValue: 1.07, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
       Animated.timing(chestPulse, { toValue: 1,    duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-    ])).start();
-    Animated.loop(Animated.sequence([
+    ]));
+    const shake = Animated.loop(Animated.sequence([
       Animated.timing(chestShake, { toValue: 1, duration: 80,  useNativeDriver: true }),
       Animated.timing(chestShake, { toValue: -1, duration: 80, useNativeDriver: true }),
       Animated.timing(chestShake, { toValue: 0, duration: 80,  useNativeDriver: true }),
       Animated.delay(3200),
-    ])).start();
-  }, []);
+    ]));
+    pulse.start(); shake.start();
+    return () => { pulse.stop(); shake.stop(); };
+  }, [chestPulse, chestShake]);
 
   const openTreasure = async () => {
     if (!treasureAvailable || openingTreasure) return;
@@ -427,7 +429,7 @@ export default function GameScreen() {
 
   useEffect(() => {
     headerAnim.setValue(0);
-  }, []);
+  }, [headerAnim]);
 
   const level      = getLevel(xp);
   const xpInLevel  = xp - level * 100;

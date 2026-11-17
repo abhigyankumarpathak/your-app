@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
@@ -98,13 +99,22 @@ export default function Study() {
   const [xpToast, setXpToast] = useState('');
   const xpAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => { loadSessions(); loadPomodoroPreference(); }, []);
+  // Reload on focus: the drawer keeps this screen mounted, so data changed on
+  // another screen or pulled from the cloud would otherwise go stale.
+  useFocusEffect(useCallback(() => { loadSessions(); loadPomodoroPreference(); }, []));
 
   useEffect(() => {
     if (running && !paused) {
+      // Count wall-clock time rather than ticks: JS timers drift and are
+      // suspended entirely while the phone is locked or the app is in the
+      // background, so a tick counter would silently lose study time.
+      let last = Date.now();
       intervalRef.current = setInterval(() => {
-        setSeconds((s) => s + 1);
-        if (pomodoroEnabled) setPomodoroSeconds((ps) => ps - 1);
+        const delta = Math.floor((Date.now() - last) / 1000);
+        if (delta <= 0) return;
+        last += delta * 1000;
+        setSeconds((s) => s + delta);
+        if (pomodoroEnabled) setPomodoroSeconds((ps) => Math.max(0, ps - delta));
       }, 1000);
       if (enableAnimations) {
         Animated.loop(Animated.sequence([
@@ -117,7 +127,7 @@ export default function Study() {
       scaleAnim.setValue(1);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, paused, enableAnimations, pomodoroEnabled]);
+  }, [running, paused, enableAnimations, pomodoroEnabled, scaleAnim]);
 
   // Pomodoro phase transitions
   useEffect(() => {
@@ -145,13 +155,15 @@ export default function Study() {
   const loadSessions = async () => {
     try {
       const data = await AsyncStorage.getItem('focusSessions');
-      if (data) { const all = JSON.parse(data); setSessions(all); recalcToday(all); }
+      const all = data ? JSON.parse(data) : [];
+      setSessions(all);
+      recalcToday(all);
     } catch (e) { console.log('Error loading sessions:', e); }
   };
 
   const loadPomodoroPreference = async () => {
     const val = await AsyncStorage.getItem('focusPomodoroEnabled');
-    if (val === 'true') setPomodoroEnabled(true);
+    setPomodoroEnabled(val === 'true');
   };
 
   const togglePomodoro = async (val: boolean) => {
@@ -247,18 +259,25 @@ export default function Study() {
     setSubject('');
   };
 
-  const resolveDate = (choice: number, custom: string) => {
+  /** Returns the session date string, or null if the custom date is invalid. */
+  const resolveDate = (choice: number, custom: string): string | null => {
     if (choice < 4) return dateLabel(choice);
     const p = new Date(custom.trim());
-    return isNaN(p.getTime()) ? new Date().toLocaleDateString() : p.toLocaleDateString();
+    if (isNaN(p.getTime())) return null;
+    const endOfToday = new Date(); endOfToday.setHours(23, 59, 59, 999);
+    if (p > endOfToday) return null;
+    return p.toLocaleDateString();
   };
 
   const handleAddManual = async () => {
     const h = parseFloat(logHours) || 0, m = parseFloat(logMinutes) || 0;
     const totalSecs = Math.round(h * 3600 + m * 60);
     if (!logSubject.trim()) { notify('Missing subject', 'Please enter a subject.'); return; }
-    if (totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
-    const newSession = { id: Date.now(), subject: logSubject.trim(), duration: totalSecs, date: resolveDate(logDateChoice, logCustomDate), notes: logNotes.trim() || undefined };
+    if (h < 0 || m < 0 || totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
+    if (totalSecs > 24 * 3600) { notify('Too long', 'A single session can\'t be longer than 24 hours.'); return; }
+    const date = resolveDate(logDateChoice, logCustomDate);
+    if (!date) { notify('Check the date', 'Enter a past date like MM/DD/YYYY.'); return; }
+    const newSession = { id: Date.now(), subject: logSubject.trim(), duration: totalSecs, date, notes: logNotes.trim() || undefined };
     const updated = [newSession, ...sessions];
     await persist(updated);
     const profile = await AsyncStorage.getItem('focusUserProfile');
@@ -283,8 +302,15 @@ export default function Study() {
     const h = parseFloat(editHours) || 0, m = parseFloat(editMinutes) || 0;
     const totalSecs = Math.round(h * 3600 + m * 60);
     if (!editSubject.trim()) { notify('Missing subject', 'Enter a subject.'); return; }
-    if (totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
-    persist(sessions.map((s) => s.id === editSession.id ? { ...s, subject: editSubject.trim(), duration: totalSecs, date: resolveDate(editDateChoice, editCustomDate), notes: editNotes.trim() || undefined } : s));
+    if (h < 0 || m < 0 || totalSecs <= 0) { notify('Missing duration', 'Enter hours or minutes.'); return; }
+    if (totalSecs > 24 * 3600) { notify('Too long', 'A single session can\'t be longer than 24 hours.'); return; }
+    // An untouched custom date is the session's own stored string — keep it
+    // as-is rather than re-parsing (locale date strings don't always parse).
+    const date = editDateChoice === 4 && editCustomDate === editSession.date
+      ? editSession.date
+      : resolveDate(editDateChoice, editCustomDate);
+    if (!date) { notify('Check the date', 'Enter a past date like MM/DD/YYYY.'); return; }
+    persist(sessions.map((s) => s.id === editSession.id ? { ...s, subject: editSubject.trim(), duration: totalSecs, date, notes: editNotes.trim() || undefined } : s));
     setEditSession(null);
   };
 

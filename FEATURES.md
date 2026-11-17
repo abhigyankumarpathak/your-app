@@ -25,7 +25,7 @@
 
 The root layout ([app/_layout.tsx](app/_layout.tsx)) gates the app in three stages:
 
-1. **Auth** — if there is no Supabase session, the [Login](app/login.tsx) screen is shown first. Users can sign in, sign up, or tap **"Maybe later"** to skip and use the device locally. Existing users who *sign in* skip onboarding (they've already done it); sign-up and "maybe later" fall through to onboarding.
+1. **Auth** — if there is no Supabase session, the [Login](app/login.tsx) screen is shown first. Users can sign in, sign up, or tap **"Maybe later"** to skip and use the device locally. Existing users who *sign in* skip onboarding (they've already done it); sign-up and "maybe later" fall through to onboarding. "Maybe later" is remembered (`focusAuthSkipped`), so guests aren't shown the login screen again on every launch; signing out clears it.
 2. **Onboarding** — the 7-step carousel below, on first launch / after sign-up / after a reset.
 3. **The app** — the drawer navigator.
 
@@ -68,14 +68,16 @@ Onboarding can be reset via `RESET_APP` device event (used by Settings).
 
 ## Study Timer
 
-- **Free timer** — start, pause, resume, stop. Displays `HH:MM:SS`.
+- **Free timer** — start, pause, resume, stop. Displays `HH:MM:SS`. Counts wall-clock time, so it keeps counting correctly while the phone is locked or the app is in the background.
 - **Pomodoro mode** — 25-min work / 5-min break / 15-min long break cycles
 - Subject field for tagging sessions
 - Animated pulse while running (respects animation toggle)
 - Haptic feedback on start/stop (via `expo-haptics`)
 - Sessions saved to `AsyncStorage` with date, duration, subject
 - **Session history** grouped by date (Today / Yesterday / date string)
+- **Manual log / edit** validates input: duration must be positive and at most 24 h, custom dates must be valid and not in the future.
 - After saving a session: XP awarded, streak updated, achievements checked
+- Session data reloads whenever the screen is focused, so changes from other screens or a cloud pull show up immediately (same for Wellness, Screen Time, and Goals).
 
 ---
 
@@ -84,8 +86,8 @@ Onboarding can be reset via `RESET_APP` device event (used by Settings).
 Powered by `services/streaks.ts` and `services/quests.ts`.
 
 ### Streaks
-- Increments when a session is logged on a new calendar day
-- Resets to 1 if a day is skipped
+- Computed from the set of session dates: the number of consecutive days with a session, ending today (or yesterday if today has none yet). Back-dated manual logs and deleted sessions are therefore counted correctly.
+- Shows 0 once a full day is missed, even before the next session is logged
 - Tracks current streak and all-time longest streak
 
 ### XP & Levels
@@ -271,6 +273,7 @@ README.md for setup.
 - **Mood tracking** — 5 levels (😴 😑 😐 🙂 😄)
 - Analytics: average sleep hours, average screen time, total logs
 - Recent activity list with date and mood indicators
+- One entry per day: logging again (or after saving screen time for today) updates today's entry instead of adding a duplicate. Sleep and screen time must be 0–24 h.
 
 ### Apple Health Integration (iOS only)
 
@@ -288,6 +291,7 @@ Powered by `services/health.ts` (`@kingstinct/react-native-healthkit`). Lazy-loa
 
 - Manual daily screen time logging (in hours)
 - Displayed on dashboard stat card
+- "Open Screen Time" explains where to find usage in system settings (Apple doesn't allow deep links into Settings › Screen Time)
 
 ---
 
@@ -324,11 +328,19 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 - **Push** (`pushLocalToCloud`) and **pull** (`pullCloudToLocal`) remain available manually from Settings as a forced override, and a push runs on sign-out.
 - After a pull, a `CLOUD_PULLED` device event tells caches (theme, profile, …) to re-read `AsyncStorage` so the UI reflects synced values immediately. A `CLOUD_SYNCED` event fires after any successful sync so the "last synced" timestamp refreshes on its own.
 - Sign-out clears the sync watermark (`clearSyncState`) — it belongs to the account that left, and a stale one would let the next account's `autoSync` push this device's data over its cloud row.
-- `SYNCED_KEYS` covers user data (profile, sessions, tasks, activities, wellness, goals, theme, avatar, streak, XP, achievements, quests, treasure, onboarding flag). Device-specific keys (notification IDs, permission cache, mini-game dates) are intentionally **excluded**.
+- `SYNCED_KEYS` covers user data (profile, sessions, tasks, activities, wellness, goals, theme, avatar, streak, XP, achievements, quests, treasure, onboarding flag). Device-specific keys (notification IDs, permission cache, are intentionally **excluded**. The Star Catch play date (`focusStarGameDate`) is synced so the daily game can't be replayed on a second device.
 - Last successful sync time is stored in `focusLastSyncedAt`.
 
 ### Settings → Account & Sync
-Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data), and sign-out confirms then pushes local changes before tearing down the session.
+Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** / **Delete Account** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data), and sign-out confirms then pushes local changes before tearing down the session.
+
+**Delete Account** (required by App Store guideline 5.1.1(v)) confirms, calls the `delete_user` Supabase function (SQL in README — deletes the auth user, which cascades to their `progress` row), signs out locally, wipes all local data and reminders, and returns to the login screen.
+
+### Settings → Privacy
+A plain-language summary of what Focus stores, what syncs to the cloud, how Health and calendar data are used, and how to erase data or delete the account.
+
+### Reset App
+Uses `wipeLocalData()` ([services/localData.ts](services/localData.ts)), which removes every synced and device-only key and cancels all scheduled reminders. The theme, avatar, and text size return to their defaults immediately.
 
 ---
 
@@ -454,7 +466,8 @@ Everything is recomputed from the live accent color, so changing the theme in Se
 - iOS 13.0+ and Android 8.0+
 - Responsive design (scales to screen size)
 - Platform-specific notification channel (Android)
-- Permission flows: Calendar, Health (opens system settings), Screen Time (opens system settings), Notifications
+- Permission flows: Calendar, Health, Screen Time, Notifications. Health and Screen Time show instructions instead of private `App-prefs:` deep links, which App Review rejects.
+- Native permissions are kept to what the app uses: Android declares only calendar access (camera, microphone, storage/media, usage-stats and package-query permissions are explicitly blocked; the photo picker needs none). iOS declares calendar (no reminders), photo library, and HealthKit read access, with HealthKit background delivery turned off.
 
 ---
 
@@ -496,3 +509,4 @@ All data is stored locally via `AsyncStorage`. When the user signs in, the user-
 | `focusStreakReminderId` | Scheduled notification ID |
 | `focusTaskNotifMap` | Map of taskId → notification ID |
 | `focusNotifPermission` / `focusHealthPermission` | Cached permission-granted flags |
+| `focusAuthSkipped` | Set when the user chose "Maybe later" on the login screen |

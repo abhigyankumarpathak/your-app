@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import {
     Animated,
-    Dimensions,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -17,8 +16,6 @@ import { AVATAR_OPTIONS, useTheme } from '../context/ThemeContext';
 import { notify } from '../services/dialog';
 import { hasNotificationPermission, requestNotificationPermission } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, openHealthSettings, openScreenTimeSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College'];
 const SUBJECTS = ['Math', 'Science', 'English', 'History', 'CS/Coding', 'Art', 'Music', 'Languages', 'PE/Sports', 'Other'];

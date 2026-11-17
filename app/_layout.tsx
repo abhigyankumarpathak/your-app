@@ -101,10 +101,15 @@ function DrawerLayout() {
   );
 }
 
-function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boolean; setOnboardingDone: (v: boolean) => void }) {
+function AppContent({ onboardingDone, setOnboardingDone, initialAuthSkipped }: {
+  onboardingDone: boolean;
+  setOnboardingDone: (v: boolean) => void;
+  initialAuthSkipped: boolean;
+}) {
   const { session, loading } = useAuth();
-  // Lets a user proceed without an account ("Maybe later").
-  const [authSkipped, setAuthSkipped] = useState(false);
+  // Lets a user proceed without an account ("Maybe later"). Persisted so
+  // guests aren't sent back to the login screen on every launch.
+  const [authSkipped, setAuthSkipped] = useState(initialAuthSkipped);
 
   // Signing out returns to the login gate. Keyed off a session -> null
   // transition rather than `session === null` alone, so "Maybe later" users
@@ -115,6 +120,7 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
     else if (hadSession.current) {
       hadSession.current = false;
       setAuthSkipped(false);
+      AsyncStorage.removeItem('focusAuthSkipped');
     }
   }, [session]);
 
@@ -145,7 +151,8 @@ function AppContent({ onboardingDone, setOnboardingDone }: { onboardingDone: boo
             AsyncStorage.removeItem('focusOnboardingComplete');
             setOnboardingDone(false);
           }
-          // "Maybe later" leaves the flag alone and falls through.
+          // "Maybe later" leaves the onboarding flag alone and falls through.
+          else AsyncStorage.setItem('focusAuthSkipped', 'true');
           setAuthSkipped(true);
         }}
       />
@@ -191,17 +198,27 @@ export default function RootLayout() {
 function RootContent() {
   const { onboardingDone, setOnboardingDone, triggerReset } = useAppState();
   const [initialized, setInitialized] = useState(false);
+  const [authSkipped, setAuthSkipped] = useState(false);
+  // Remounts AppContent after a reset so its in-memory auth state starts over.
+  const [resetCount, setResetCount] = useState(0);
 
   useEffect(() => {
-    AsyncStorage.getItem('focusOnboardingComplete').then((val) => {
-      setOnboardingDone(val === 'true');
-      setInitialized(true);
-    });
+    AsyncStorage.multiGet(['focusOnboardingComplete', 'focusAuthSkipped'])
+      .then(([onboarded, skipped]) => {
+        setOnboardingDone(onboarded[1] === 'true');
+        setAuthSkipped(skipped[1] === 'true');
+      })
+      .catch(() => undefined)
+      .finally(() => setInitialized(true));
   }, [setOnboardingDone]);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('RESET_APP', () => {
       triggerReset();
+      AsyncStorage.getItem('focusAuthSkipped')
+        .then((v) => setAuthSkipped(v === 'true'))
+        .catch(() => setAuthSkipped(false))
+        .finally(() => setResetCount((n) => n + 1));
     });
     return () => sub.remove();
   }, [triggerReset]);
@@ -215,6 +232,11 @@ function RootContent() {
   }
 
   return (
-    <AppContent onboardingDone={onboardingDone} setOnboardingDone={setOnboardingDone} />
+    <AppContent
+      key={resetCount}
+      onboardingDone={onboardingDone}
+      setOnboardingDone={setOnboardingDone}
+      initialAuthSkipped={authSkipped}
+    />
   );
 }

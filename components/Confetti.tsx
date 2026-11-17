@@ -50,7 +50,7 @@ function Piece({
       useNativeDriver: true,
       easing: Easing.out(Easing.quad),
     }).start();
-  }, []);
+  }, [anim, delay, duration]);
   return (
     <Animated.View
       style={{

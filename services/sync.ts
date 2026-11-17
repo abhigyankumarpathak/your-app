@@ -24,6 +24,7 @@ export const SYNCED_KEYS = [
   'focusPomodoroEnabled',
   'focusDailyTreasure',
   'focusDailyQuests',
+  'focusStarGameDate',
   'focusOnboardingComplete',
 ] as const;
 

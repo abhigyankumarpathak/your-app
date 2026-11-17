@@ -200,7 +200,7 @@ export const loadDailyQuests = async (): Promise<DailyQuestState> => {
     const raw = await AsyncStorage.getItem('focusDailyQuests');
     if (raw) {
       const saved: DailyQuestState = JSON.parse(raw);
-      if (saved.date === today) return saved;
+      if (saved.date === today && Array.isArray(saved.questIds) && Array.isArray(saved.completedIds)) return saved;
     }
   } catch {}
   const fresh: DailyQuestState = {
@@ -217,9 +217,11 @@ export const getTodayQuestDisplays = async (
   goalHours: number
 ): Promise<QuestDisplay[]> => {
   const state = await loadDailyQuests();
-  return state.questIds.map(id => {
-    const def = QUEST_POOL.find(q => q.id === id)!;
-    return {
+  // Skip ids that no longer exist in the pool (e.g. synced from an older build).
+  return state.questIds.flatMap(id => {
+    const def = QUEST_POOL.find(q => q.id === id);
+    if (!def) return [];
+    return [{
       id,
       icon: def.icon,
       art: def.art,
@@ -229,7 +231,7 @@ export const getTodayQuestDisplays = async (
       bonusXP: def.bonusXP,
       completed: state.completedIds.includes(id),
       progress: def.getProgress(sessions, goalHours),
-    };
+    }];
   });
 };
 
