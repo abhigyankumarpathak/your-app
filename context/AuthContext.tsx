@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Permanently deletes the signed-in account and its cloud data, then wipes
-  // this device. Needs the `delete_user` SQL function from README.md — the
+  // this device. Needs the `delete_user` SQL function from DEVELOPMENT.md — the
   // anon key can't delete auth users on its own.
   const deleteAccount: AuthContextValue['deleteAccount'] = async () => {
     const client = getSupabase();

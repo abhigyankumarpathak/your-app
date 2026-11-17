@@ -104,7 +104,7 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
           {!isSupabaseConfigured && (
             <View style={[styles.warnBox, { borderColor: '#F59E0B', backgroundColor: '#F59E0B22' }]}>
               <Text style={[styles.warnText, { color: presetValues.text, fontSize: fontSizes.base - 1 }]}>
-                ⚠️ Sign-in isn&apos;t configured yet. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (see README) to enable it.
+                ⚠️ Accounts aren&apos;t available in this version of Focus. Tap “Maybe later” to keep using the app on this device.
               </Text>
             </View>
           )}

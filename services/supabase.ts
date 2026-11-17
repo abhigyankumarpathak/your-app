@@ -10,7 +10,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 if (!isSupabaseConfigured && __DEV__) {
   console.warn(
     '[supabase] EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY is not set. ' +
-      'Login & cross-device sync are disabled until you add them. See README.md.'
+      'Login & cross-device sync are disabled until you add them. See DEVELOPMENT.md.'
   );
 }
 

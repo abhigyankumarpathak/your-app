@@ -259,7 +259,7 @@ export default function Schedule() {
                   : 'Connect Google Calendar above to see your events here.'
                 : isCalendarAvailable()
                   ? 'Calendar access not granted. Enable it in Settings → Notifications → Calendar Access.'
-                  : 'Your device calendar isn\'t available in a browser. Set up Google Calendar to see events on the web — see README.md.'}
+                  : 'Calendar events aren\'t available in the browser version. Open Focus on your phone to see your calendar here.'}
             </Text>
           ) : calendarEvents.length === 0 ? (
             <Text style={[styles.emptyNote, { color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>

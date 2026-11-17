@@ -263,7 +263,7 @@ a refresh token so sign-in survives restarts.
 
 Connect/disconnect from the Schedule screen or Settings → Notifications. Hidden
 entirely unless `EXPO_PUBLIC_GOOGLE_CLIENT_ID_{WEB,IOS,ANDROID}` is set — see
-README.md for setup.
+DEVELOPMENT.md for setup.
 
 ---
 
@@ -318,7 +318,7 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 - **Sign in / Sign up** with email + password (min 6 chars). If Supabase email confirmations are on, sign-up shows a "check your email" prompt and returns the user to Sign In.
 - **Session persistence** — the SDK restores sessions from storage across launches; `onAuthStateChange` keeps context state in sync.
 - **"Maybe later"** skip lets users run the app without an account.
-- Supabase config is read from `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (see README / `.env.example`). `isSupabaseConfigured` / `getSupabase()` return null when unset so nothing crashes.
+- Supabase config is read from `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (see DEVELOPMENT.md / `.env.example`). `isSupabaseConfigured` / `getSupabase()` return null when unset so nothing crashes.
 
 ### Sync ([services/sync.ts](services/sync.ts))
 - Local progress is serialized into a single blob and stored in a Supabase `progress` table (`{ user_id, data, updated_at }`, upserted on `user_id`).
@@ -334,7 +334,7 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 ### Settings → Account & Sync
 Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** / **Delete Account** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data), and sign-out confirms then pushes local changes before tearing down the session.
 
-**Delete Account** (required by App Store guideline 5.1.1(v)) confirms, calls the `delete_user` Supabase function (SQL in README — deletes the auth user, which cascades to their `progress` row), signs out locally, wipes all local data and reminders, and returns to the login screen.
+**Delete Account** (required by App Store guideline 5.1.1(v)) confirms, calls the `delete_user` Supabase function (SQL in DEVELOPMENT.md — deletes the auth user, which cascades to their `progress` row), signs out locally, wipes all local data and reminders, and returns to the login screen.
 
 ### Settings → Privacy
 A plain-language summary of what Focus stores, what syncs to the cloud, how Health and calendar data are used, and how to erase data or delete the account.
