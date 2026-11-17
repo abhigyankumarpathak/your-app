@@ -108,6 +108,18 @@ Found a bug or have an idea? [Open an issue](https://github.com/abhigyankumarpat
 
 ---
 
-## For developers
+## Run it yourself
 
-Want to run Focus from source? See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, building and deployment, and [FEATURES.md](FEATURES.md) for a detailed reference of how everything works.
+You'll need [Node.js](https://nodejs.org) 20 or newer.
+
+```bash
+git clone https://github.com/abhigyankumarpathak/your-app.git
+cd your-app
+npm install
+cp .env.example .env     # optional: add Supabase keys to turn on accounts and sync
+npm run web              # opens Focus in your browser
+```
+
+To run it on your phone instead, install the free **Expo Go** app, run `npm run go`, and scan the QR code. Without Supabase keys, everything works except accounts and sync.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the full setup, including building, deploying and Google Calendar, and [FEATURES.md](FEATURES.md) for a detailed reference of how everything works.
