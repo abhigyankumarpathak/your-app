@@ -256,94 +256,94 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
           )}
 
           {isReset ? resetForm : (
-          <>
-          <View style={[styles.tabs, { backgroundColor: presetValues.bgSecondary }]}>
-            {(['signIn', 'signUp'] as Mode[]).map((m) => {
-              const active = mode === m;
-              return (
-                <TouchableOpacity
-                  key={m}
-                  style={[styles.tab, active && { backgroundColor: accentColor }]}
-                  onPress={() => setMode(m)}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      { color: active ? '#fff' : presetValues.textSecondary, fontSize: fontSizes.base },
-                    ]}
-                  >
-                    {m === 'signIn' ? 'Sign In' : 'Sign Up'}
+            <>
+              <View style={[styles.tabs, { backgroundColor: presetValues.bgSecondary }]}>
+                {(['signIn', 'signUp'] as Mode[]).map((m) => {
+                  const active = mode === m;
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.tab, active && { backgroundColor: accentColor }]}
+                      onPress={() => setMode(m)}
+                    >
+                      <Text
+                        style={[
+                          styles.tabText,
+                          { color: active ? '#fff' : presetValues.textSecondary, fontSize: fontSizes.base },
+                        ]}
+                      >
+                        {m === 'signIn' ? 'Sign In' : 'Sign Up'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={[styles.label, { color: presetValues.text, fontSize: fontSizes.base }]}>Email</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: presetValues.cardBg,
+                  color: presetValues.text,
+                  borderColor: presetValues.borderColor,
+                  fontSize: fontSizes.base,
+                }]}
+                placeholder="you@example.com"
+                placeholderTextColor={presetValues.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              <Text style={[styles.label, { color: presetValues.text, fontSize: fontSizes.base }]}>Password</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: presetValues.cardBg,
+                  color: presetValues.text,
+                  borderColor: presetValues.borderColor,
+                  fontSize: fontSizes.base,
+                }]}
+                placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
+                placeholderTextColor={presetValues.textSecondary}
+                secureTextEntry
+                autoCapitalize="none"
+                textContentType="password"
+                value={password}
+                onChangeText={setPassword}
+              />
+
+              <TouchableOpacity
+                style={[styles.submitBtn, { backgroundColor: accentColor, opacity: busy ? 0.7 : 1 }]}
+                onPress={submit}
+                disabled={busy}
+              >
+                {busy
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={[styles.submitText, { fontSize: fontSizes.base }]}>
+                      {isSignIn ? 'Sign In' : 'Create Account'}
+                    </Text>}
+              </TouchableOpacity>
+
+              {isSignIn && isSupabaseConfigured && (
+                <TouchableOpacity onPress={startReset} style={styles.skip}>
+                  <Text style={{ color: accentColor, fontSize: fontSizes.base - 1, fontWeight: '600' }}>
+                    Forgot password?
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
+              )}
 
-          <Text style={[styles.label, { color: presetValues.text, fontSize: fontSizes.base }]}>Email</Text>
-          <TextInput
-            style={[styles.input, {
-              backgroundColor: presetValues.cardBg,
-              color: presetValues.text,
-              borderColor: presetValues.borderColor,
-              fontSize: fontSizes.base,
-            }]}
-            placeholder="you@example.com"
-            placeholderTextColor={presetValues.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            value={email}
-            onChangeText={setEmail}
-          />
+              <TouchableOpacity onPress={() => finish('skip')} style={styles.skip}>
+                <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
+                  Maybe later — keep using this device only
+                </Text>
+              </TouchableOpacity>
 
-          <Text style={[styles.label, { color: presetValues.text, fontSize: fontSizes.base }]}>Password</Text>
-          <TextInput
-            style={[styles.input, {
-              backgroundColor: presetValues.cardBg,
-              color: presetValues.text,
-              borderColor: presetValues.borderColor,
-              fontSize: fontSizes.base,
-            }]}
-            placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
-            placeholderTextColor={presetValues.textSecondary}
-            secureTextEntry
-            autoCapitalize="none"
-            textContentType="password"
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: accentColor, opacity: busy ? 0.7 : 1 }]}
-            onPress={submit}
-            disabled={busy}
-          >
-            {busy
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={[styles.submitText, { fontSize: fontSizes.base }]}>
-                  {isSignIn ? 'Sign In' : 'Create Account'}
-                </Text>}
-          </TouchableOpacity>
-
-          {isSignIn && isSupabaseConfigured && (
-            <TouchableOpacity onPress={startReset} style={styles.skip}>
-              <Text style={{ color: accentColor, fontSize: fontSizes.base - 1, fontWeight: '600' }}>
-                Forgot password?
+              <Text style={[styles.fineprint, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
+                Your existing progress on this device will be uploaded the first time you sign in, so nothing is lost.
               </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity onPress={() => finish('skip')} style={styles.skip}>
-            <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
-              Maybe later — keep using this device only
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.fineprint, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
-            Your existing progress on this device will be uploaded the first time you sign in, so nothing is lost.
-          </Text>
-          </>
+            </>
           )}
         </View>
       </ScrollView>
