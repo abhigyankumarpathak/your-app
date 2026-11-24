@@ -58,7 +58,7 @@ Onboarding can be reset via `RESET_APP` device event (used by Settings).
 - Rotating daily motivation quote
 - **Level + XP progress bar** — shows current level title, total XP, and XP needed for next level.
 - **Quick stat chips** — animated streak flame, badge count, daily quests count. Each chip is tappable.
-- **2×2 stat grid** — Study Time, Tasks, Sleep, Screen Time. Each card has a colored icon bubble, staggered fade-in animation.
+- **2×2 stat grid** — Study Time, Tasks, Sleep, Screen Time. Each card has a colored icon bubble, staggered fade-in animation. Sleep and Screen Time come from **today's** wellness log only (0 if nothing is logged today), never an older entry.
 - **Start Study CTA button** — large accent-colored button to launch the focus timer
 - Daily Quests teaser card (links to /game)
 - Collapsible achievements shelf
@@ -69,14 +69,14 @@ Onboarding can be reset via `RESET_APP` device event (used by Settings).
 ## Study Timer
 
 - **Free timer** — start, pause, resume, stop. Displays `HH:MM:SS`. Counts wall-clock time, so it keeps counting correctly while the phone is locked or the app is in the background.
-- **Pomodoro mode** — 25-min work / 5-min break / 15-min long break cycles
+- **Pomodoro mode** — 25-min work / 5-min break / 15-min long break cycles. Only work phases count toward the saved session; the main timer pauses during breaks.
 - Subject field for tagging sessions
 - Animated pulse while running (respects animation toggle)
 - Haptic feedback on start/stop (via `expo-haptics`)
 - Sessions saved to `AsyncStorage` with date, duration, subject
 - **Session history** grouped by date (Today / Yesterday / date string)
 - **Manual log / edit** validates input: duration must be positive and at most 24 h, custom dates must be valid and not in the future.
-- After saving a session: XP awarded, streak updated, achievements checked
+- After saving a session (timed or manual): XP awarded, streak updated, achievements checked, daily quests progressed
 - Session data reloads whenever the screen is focused, so changes from other screens or a cloud pull show up immediately (same for Wellness, Screen Time, and Goals).
 
 ---
@@ -232,11 +232,12 @@ Creation uses a guided step-by-step modal with example answers for each field.
 
 ## Tasks
 
-- Create, complete, and delete tasks
+- Create, complete, and delete tasks. Deleting asks for confirmation first.
 - Tasks can be linked to a goal (`goalId`)
 - Color-coded with theme accent
 - Separate sections for pending and completed
-- Task due dates trigger scheduled notifications
+- Task due dates trigger a notification at 8 AM on the due date. Completing a task cancels it; reopening the task schedules it again (if the date hasn't passed).
+- A custom due date must be a valid date (MM/DD/YYYY); otherwise the task isn't saved and the user is asked to fix it.
 
 ---
 
@@ -244,6 +245,7 @@ Creation uses a guided step-by-step modal with example answers for each field.
 
 - Weekly view organized by day
 - Color-coded activities with time tracking
+- Adding an activity requires a name (the user is told if it's missing); name and time are trimmed
 
 ### Calendar Sources
 
@@ -316,6 +318,7 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 
 ### Auth ([context/AuthContext.tsx](context/AuthContext.tsx), [services/supabase.ts](services/supabase.ts))
 - **Sign in / Sign up** with email + password (min 6 chars). If Supabase email confirmations are on, sign-up shows a "check your email" prompt and returns the user to Sign In.
+- **Forgot password** — a link on the Sign In screen opens a reset view. `sendPasswordReset` emails a 6-digit code (`resetPasswordForEmail`); `completePasswordReset` checks it with `verifyOtp({ type: 'recovery' })`, which signs the user in, sets the new password with `updateUser`, then syncs like a normal sign-in. Requires the Supabase **Reset Password** email template to include `{{ .Token }}` (see DEVELOPMENT.md).
 - **Session persistence** — the SDK restores sessions from storage across launches; `onAuthStateChange` keeps context state in sync.
 - **"Maybe later"** skip lets users run the app without an account.
 - Supabase config is read from `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (see DEVELOPMENT.md / `.env.example`). `isSupabaseConfigured` / `getSupabase()` return null when unset so nothing crashes.
@@ -327,12 +330,12 @@ Optional email/password accounts back a cross-device progress sync, powered by S
 - Background pushes hash the local blob and skip the network round-trip when nothing changed since the last successful push. Manual **Push** always sends.
 - **Push** (`pushLocalToCloud`) and **pull** (`pullCloudToLocal`) remain available manually from Settings as a forced override, and a push runs on sign-out.
 - After a pull, a `CLOUD_PULLED` device event tells caches (theme, profile, …) to re-read `AsyncStorage` so the UI reflects synced values immediately. A `CLOUD_SYNCED` event fires after any successful sync so the "last synced" timestamp refreshes on its own.
-- Sign-out clears the sync watermark (`clearSyncState`) — it belongs to the account that left, and a stale one would let the next account's `autoSync` push this device's data over its cloud row.
+- **Sign-out** pushes local data to the cloud first. If that push fails, sign-out stops and returns an error; Settings then asks the user whether to sign out anyway (`signOut({ force: true })`), which would lose unsynced changes. After a successful push it signs out, wipes all local data with `wipeLocalData({ includeSyncState: true })`, and emits `RESET_APP` to return to the login screen. Wiping matters on shared devices: otherwise the next account created on the device would upload the previous user's data as its own. The data comes back on the next sign-in.
 - `SYNCED_KEYS` covers user data (profile, sessions, tasks, activities, wellness, goals, theme, avatar, streak, XP, achievements, quests, treasure, onboarding flag). Device-specific keys (notification IDs, permission cache, are intentionally **excluded**. The Star Catch play date (`focusStarGameDate`) is synced so the daily game can't be replayed on a second device.
 - Last successful sync time is stored in `focusLastSyncedAt`.
 
 ### Settings → Account & Sync
-Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** / **Delete Account** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data), and sign-out confirms then pushes local changes before tearing down the session.
+Shows the signed-in email, last-synced timestamp, a note that sync is automatic, and **Push** / **Pull** / **Sign Out** / **Delete Account** actions. Push and Pull are manual overrides — sync happens on its own. Pull confirms first (it overwrites local data). Sign-out confirms, saves to the cloud, then removes this account's data from the device (see Sync above).
 
 **Delete Account** (required by App Store guideline 5.1.1(v)) confirms, calls the `delete_user` Supabase function (SQL in DEVELOPMENT.md — deletes the auth user, which cascades to their `progress` row), signs out locally, wipes all local data and reminders, and returns to the login screen.
 
@@ -364,7 +367,7 @@ Configured in Settings, persisted via `ThemeContext`.
 ### Avatar
 
 Two avatar modes:
-1. **Photo from camera roll** — picked via `expo-image-picker` with crop-to-square. The picked image is converted to a self-contained **data URL** ([services/avatar.ts](services/avatar.ts)) before being stored in `focusAvatarImage`, so it travels through the existing AsyncStorage → Supabase progress sync (no Storage bucket needed) and renders on every platform including web.
+1. **Photo from camera roll** — picked via `expo-image-picker` with crop-to-square at quality 0.3 (avatars render small, and this keeps synced data light). In both Settings and Onboarding, the picked image is converted to a self-contained **data URL** ([services/avatar.ts](services/avatar.ts)) before being stored in `focusAvatarImage`, so it travels through the existing AsyncStorage → Supabase progress sync (no Storage bucket needed) and renders on every platform including web.
 2. **Emoji avatar** — 24 emoji options + 8 background colors. Stored in `focusAvatar` + `focusAvatarBg`.
 
 A reusable `<Avatar size={...} />` component ([components/Avatar.tsx](components/Avatar.tsx)) renders whichever is set (photo takes precedence). Shown in Settings header, Dashboard hero, and the onboarding preview.
@@ -374,7 +377,7 @@ Camera roll permission is requested via `requestMediaLibraryPermission()` ([serv
 - Onboarding → Step 5 "Allow Access" → "Photo Library" row
 - The "Use Photo" button in Settings/Onboarding triggers the OS prompt automatically.
 
-iOS uses `NSPhotoLibraryUsageDescription`. Android requests `READ_MEDIA_IMAGES` (API 33+) / `READ_EXTERNAL_STORAGE`.
+iOS uses `NSPhotoLibraryUsageDescription`. Android uses the system photo picker, which needs no storage permission (`READ_MEDIA_IMAGES` / `READ_EXTERNAL_STORAGE` are blocked in `app.json`).
 
 ---
 

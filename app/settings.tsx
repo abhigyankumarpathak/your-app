@@ -1,22 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, DeviceEventEmitter, Image, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Avatar from '../components/Avatar';
 import ColorWheel from '../components/ColorWheel';
-import { accentGradient } from '../theme/design';
-import { useAuth } from '../context/AuthContext';
 import { useAppState } from '../context/AppStateContext';
+import { useAuth } from '../context/AuthContext';
 import { AVATAR_OPTIONS, FONT_SIZES, THEME_COLORS, THEME_PRESETS, useTheme } from '../context/ThemeContext';
+import { toAvatarDataUrl } from '../services/avatar';
+import { confirm, notify } from '../services/dialog';
+import { isGoogleCalendarConfigured, isGoogleSignedIn, signInToGoogle, signOutGoogle } from '../services/googleCalendar';
+import { isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
+import { wipeLocalData } from '../services/localData';
 import { areNotificationsAvailable, cancelBedtimeReminder, cancelStreakReminder, cancelStudyReminder, hasNotificationPermission, requestNotificationPermission, scheduleBedtimeReminder, scheduleStreakReminder, scheduleStudyReminder } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, isCalendarAvailable, openHealthSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
-import { isHealthAvailable, isHealthDataAvailable, requestHealthPermissions } from '../services/health';
-import { isGoogleCalendarConfigured, isGoogleSignedIn, signInToGoogle, signOutGoogle } from '../services/googleCalendar';
 import { getLastSyncedAt } from '../services/sync';
-import { confirm, notify } from '../services/dialog';
-import { toAvatarDataUrl } from '../services/avatar';
-import { wipeLocalData } from '../services/localData';
+import { accentGradient } from '../theme/design';
 
 const IS_WEB = Platform.OS === 'web';
 const NOTIFICATIONS_AVAILABLE = areNotificationsAvailable();
@@ -126,10 +126,21 @@ export default function Settings() {
   const handleSignOut = async () => {
     const ok = await confirm(
       'Sign out?',
-      'Your latest progress will be saved to the cloud before signing out. The data on this device will stay so you can keep using the app.',
+      'Your progress will be saved to your account and then removed from this device. Sign back in any time to get it back.',
       { confirmText: 'Sign Out', destructive: true }
     );
-    if (ok) await signOut();
+    if (!ok) return;
+
+    const result = await signOut();
+    if (result.error) {
+      // The save failed — let the user decide instead of silently losing data.
+      const force = await confirm(
+        'Couldn\'t save to the cloud',
+        `${result.error}\n\nIf you sign out now, anything since your last sync will be lost. Check your internet and try again, or sign out anyway.`,
+        { confirmText: 'Sign Out Anyway', destructive: true }
+      );
+      if (force) await signOut({ force: true });
+    }
   };
 
   const [deleting, setDeleting] = useState(false);

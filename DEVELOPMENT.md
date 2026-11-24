@@ -251,7 +251,20 @@ grant execute on function public.delete_user() to authenticated;
 
 > Already set up the table before? Run just the `delete_user` part — without it, **Delete Account** in Settings shows an error.
 
-### 4. (Optional) Disable email confirmations during development
+### 4. Set up the password-reset email
+
+"Forgot password?" in the app emails a 6-digit code. In **Authentication → Emails → Reset Password**, make sure the message includes `{{ .Token }}`, for example:
+
+```html
+<h2>Reset your Focus password</h2>
+<p>Your code is:</p>
+<p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{ .Token }}</p>
+<p>Open Focus, enter this code and choose a new password. The code expires in 1 hour.</p>
+```
+
+Also check **Authentication → Sign In / Providers → Email → Email OTP Length** is **6**, since the app's code box accepts 6 digits.
+
+### 5. (Optional) Disable email confirmations during development
 
 In **Authentication → Providers → Email**, turn off "Confirm email" if you want sign-up to log you in immediately. **Re-enable it before shipping.**
 

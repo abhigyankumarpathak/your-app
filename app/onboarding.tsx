@@ -1,18 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    useWindowDimensions
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions
 } from 'react-native';
 import { AVATAR_OPTIONS, useTheme } from '../context/ThemeContext';
+import { toAvatarDataUrl } from '../services/avatar';
 import { notify } from '../services/dialog';
 import { hasNotificationPermission, requestNotificationPermission } from '../services/notifications';
 import { checkCalendarPermission, checkMediaLibraryPermission, openHealthSettings, openScreenTimeSettings, pickAvatarImage, requestCalendarPermission, requestMediaLibraryPermission } from '../services/permissions';
@@ -61,7 +62,10 @@ export default function Onboarding({ onComplete }: Props) {
   const handlePickPhoto = async () => {
     const uri = await pickAvatarImage();
     if (uri) {
-      await setAvatarImage(uri);
+      // Same as Settings: turn the photo into a data URL so it syncs and
+      // shows on every device, instead of a file path only this phone has.
+      const dataUrl = await toAvatarDataUrl(uri);
+      await setAvatarImage(dataUrl ?? uri);
       setMediaGranted(true);
     }
   };

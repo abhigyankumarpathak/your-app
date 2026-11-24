@@ -128,10 +128,11 @@ export default function Dashboard() {
       }
       if (tasks) taskCount = JSON.parse(tasks).filter((t: any) => !t.done).length;
       if (wellness) {
-        const allLogs = JSON.parse(wellness);
-        if (allLogs.length > 0) {
-          sleepHours = allLogs[0].sleepDuration || 0;
-          screenTime = allLogs[0].screenTime || 0;
+        // Only today's log counts for the "Today" cards.
+        const todayLog = JSON.parse(wellness).find((l: any) => l.date === todayDate);
+        if (todayLog) {
+          sleepHours = parseFloat(todayLog.sleepDuration) || 0;
+          screenTime = parseFloat(todayLog.screenTime) || 0;
         }
       }
       setStats({ studyHours, tasks: taskCount, sleepHours, screenTime });

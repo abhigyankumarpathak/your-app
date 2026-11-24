@@ -1,27 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Easing,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Easing,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
-import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
-import { updateQuestProgress } from '../services/quests';
+import { useTheme } from '../context/ThemeContext';
 import { confirm, notify } from '../services/dialog';
+import { updateQuestProgress } from '../services/quests';
 import { getLevel, loadXP, updateStudyStats } from '../services/streaks';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatDuration(s: number) {
@@ -65,6 +65,11 @@ export default function Study() {
   // Pomodoro
   const [pomodoroEnabled, setPomodoroEnabled] = useState(false);
   const [pomodoroPhase, setPomodoroPhase] = useState<'work' | 'break' | 'longbreak'>('work');
+  // The timer's interval is created once, so it can't see later state.
+  // This ref always holds the current phase for it to read.
+  const pomodoroPhaseRef = useRef(pomodoroPhase);
+  useEffect(() => { pomodoroPhaseRef.current = pomodoroPhase; }, [pomodoroPhase]);
+
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const [pomodoroSeconds, setPomodoroSeconds] = useState(POMO_WORK);
 
@@ -113,7 +118,8 @@ export default function Study() {
         const delta = Math.floor((Date.now() - last) / 1000);
         if (delta <= 0) return;
         last += delta * 1000;
-        setSeconds((s) => s + delta);
+        // Breaks aren't study time — only count work phases.
+        if (!pomodoroEnabled || pomodoroPhaseRef.current === 'work') setSeconds((s) => s + delta);
         if (pomodoroEnabled) setPomodoroSeconds((ps) => Math.max(0, ps - delta));
       }, 1000);
       if (enableAnimations) {
@@ -283,7 +289,10 @@ export default function Study() {
     const profile = await AsyncStorage.getItem('focusUserProfile');
     const goalHours = profile ? (parseFloat(JSON.parse(profile).studyGoalHours) || 0) : 0;
     const { xpGained } = await updateStudyStats(updated, goalHours);
-    showXpToast(`+${xpGained} XP`);
+    const { newlyCompleted, bonusXP } = await updateQuestProgress(updated, goalHours);
+    let msg = `+${xpGained + bonusXP} XP`;
+    if (newlyCompleted.length > 0) msg += ` · ⚔️ ${newlyCompleted.length} quest${newlyCompleted.length > 1 ? 's' : ''}!`;
+    showXpToast(msg);
     setShowLogForm(false);
     setLogSubject(''); setLogHours(''); setLogMinutes(''); setLogDateChoice(0); setLogCustomDate(''); setLogNotes('');
   };

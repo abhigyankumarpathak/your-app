@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
-import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
+import { useTheme } from '../context/ThemeContext';
+import { confirm, notify } from '../services/dialog';
 import { cancelTaskDueAlert, scheduleTaskDueAlert } from '../services/notifications';
-import { notify } from '../services/dialog';
+import { accentGradient, elevation, radius, screenHeader } from '../theme/design';
 
 type Priority = 'high' | 'medium' | 'low';
 
@@ -104,6 +104,7 @@ export default function Tasks() {
   const addTask = async () => {
     if (!title.trim()) { notify('Task needed', 'Please enter a task title.'); return; }
     const dueDate = resolveDueDate(dueDateChoice, customDueDate);
+    if (dueDateChoice === 4 && !dueDate) { notify('Check the date', 'Enter the due date as MM/DD/YYYY.'); return; }
     const newTask = { id: Date.now(), title: title.trim(), subject, priority: priority || undefined, dueDate, goalId: linkedGoalId ?? undefined, done: false };
     const updated = [newTask, ...tasks];
     await saveTasks(updated);
@@ -120,9 +121,16 @@ export default function Tasks() {
     await saveTasks(updated);
     const task = updated.find((t) => t.id === id);
     if (task?.done) await cancelTaskDueAlert(id); // done — cancel any scheduled alert
+    else if (task?.dueDate) await scheduleTaskDueAlert(id, task.title, task.dueDate); // reopened — bring it back
   };
 
   const handleDelete = async (id: number) => {
+    const task = tasks.find((t) => t.id === id);
+    const ok = await confirm('Delete task?', task ? `Remove "${task.title}"?` : 'Remove this task?', {
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     await cancelTaskDueAlert(id);
     await saveTasks(tasks.filter((t) => t.id !== id));
   };

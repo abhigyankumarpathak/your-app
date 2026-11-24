@@ -25,8 +25,10 @@ interface AuthContextValue {
   // follow-up step (the initial sync) didn't — the caller should proceed.
   signIn: (email: string, password: string) => Promise<{ error?: string; warning?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string; warning?: string; needsConfirmation?: boolean }>;
-  signOut: () => Promise<void>;
+  signOut: (opts?: { force?: boolean }) => Promise<{ error?: string }>;
   deleteAccount: () => Promise<{ error?: string }>;
+  sendPasswordReset: (email: string) => Promise<{ error?: string }>;
+  completePasswordReset: (email: string, code: string, newPassword: string) => Promise<{ error?: string }>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   pullNow: () => Promise<{ ok: boolean; hasData: boolean; error?: string }>;
 }
@@ -142,19 +144,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   };
 
-  const signOut: AuthContextValue['signOut'] = async () => {
+  const sendPasswordReset: AuthContextValue['sendPasswordReset'] = async (email) => {
+    const client = getSupabase();
+    if (!client) return { error: 'Accounts aren\'t available in this version.' };
+    const { error } = await client.auth.resetPasswordForEmail(email.trim());
+    return error ? { error: error.message } : {};
+  };
+
+  // Checks the emailed code (which signs the user in), sets the new password,
+  // then syncs exactly like a normal sign-in.
+  const completePasswordReset: AuthContextValue['completePasswordReset'] = async (email, code, newPassword) => {
+    const client = getSupabase();
+    if (!client) return { error: 'Accounts aren\'t available in this version.' };
+    const { error } = await client.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'recovery' });
+    if (error) return { error: error.message };
+    const { error: updateError } = await client.auth.updateUser({ password: newPassword });
+    if (updateError) return { error: updateError.message };
+    const sync = await onSignedInSync();
+    if (sync.ok && sync.direction === 'pulled') DeviceEventEmitter.emit(CLOUD_PULLED_EVENT);
+    if (sync.ok) DeviceEventEmitter.emit(CLOUD_SYNCED_EVENT);
+    return {};
+  };
+
+  const signOut: AuthContextValue['signOut'] = async ({ force = false } = {}) => {
     const client = getSupabase();
     if (client) {
-      // Push any unsaved local changes before tearing down the session.
-      await pushLocalToCloud().catch(() => undefined);
-      // Sign out from Supabase (clears session from storage)
-      await client.auth.signOut();
+      // Save everything to the cloud first. If that fails, stop — wiping the
+      // device now would lose whatever hasn't synced yet.
+      const push = await pushLocalToCloud().catch((e) => ({ ok: false, error: String(e) }));
+      if (!push.ok && !force) {
+        return { error: push.error ?? 'Could not save your progress to the cloud.' };
+      }
+      await client.auth.signOut().catch(() => undefined);
     }
-    // The sync watermark belongs to the account that just left.
+    // Remove this account's data from the device so the next person to use
+    // it can't see it, and so a new account can't upload it as its own.
+    // It's safe in the cloud and comes back on the next sign-in.
+    await wipeLocalData({ includeSyncState: true }).catch(() => undefined);
     await clearSyncState().catch(() => undefined);
-    // Always clear local session state, even with Supabase unconfigured —
-    // otherwise the button silently does nothing.
     setSession(null);
+    // Resets the theme and onboarding state and returns to the login screen.
+    DeviceEventEmitter.emit('RESET_APP');
+    return {};
   };
 
   // Permanently deletes the signed-in account and its cloud data, then wipes
@@ -193,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, deleteAccount, syncNow, pullNow }}
+      value={{ user: session?.user ?? null, session, loading, signIn, signUp, signOut, deleteAccount, sendPasswordReset, completePasswordReset, syncNow, pullNow }}
     >
       {children}
     </AuthContext.Provider>

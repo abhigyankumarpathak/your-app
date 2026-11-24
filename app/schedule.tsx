@@ -4,10 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
-import { elevation, radius } from '../theme/design';
-import { checkCalendarPermission, isCalendarAvailable } from '../services/permissions';
+import { useTheme } from '../context/ThemeContext';
 import { confirm, notify } from '../services/dialog';
 import {
   getGoogleEvents,
@@ -16,6 +14,8 @@ import {
   signInToGoogle,
   signOutGoogle,
 } from '../services/googleCalendar';
+import { checkCalendarPermission, isCalendarAvailable } from '../services/permissions';
+import { elevation, radius } from '../theme/design';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -174,8 +174,8 @@ export default function Schedule() {
   };
 
   const addActivity = () => {
-    if (!name.trim()) return;
-    saveActivities([...activities, { id: Date.now(), name, day, time }]);
+    if (!name.trim()) { notify('Name needed', 'Give the activity a name first.'); return; }
+    saveActivities([...activities, { id: Date.now(), name: name.trim(), day, time: time.trim() }]);
     setName('');
     setTime('');
     setShowForm(false);

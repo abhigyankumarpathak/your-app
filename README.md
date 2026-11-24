@@ -94,6 +94,8 @@ You can read this summary any time in the app under **Settings › Privacy**.
 
 Sign in with the same account on each device. Focus syncs automatically when you open the app, while you use it, and when you leave it, so there's nothing to press. If you ever need to force it, **Settings › Account & Sync** has **Push** (send this device's data up) and **Pull** (replace this device's data with the cloud copy).
 
+Signing out saves your progress to your account, then removes it from that device, so the next person to use it can't see your data. Sign back in to get it all back.
+
 Using Focus in a web browser? Apple Health, your phone's calendar and scheduled reminders need the phone app. Everything else works the same.
 
 ---
@@ -105,6 +107,8 @@ Using Focus in a web browser? Apple Health, your phone's calendar and scheduled 
 **I'm not getting reminders.** Check that notifications are allowed for Focus in your phone's settings, and that the reminder is switched on under **Settings › Notifications & Permissions**. Reminders aren't available in the web version.
 
 **Apple Health isn't syncing.** Open the Health app, tap your profile picture, then **Apps › Focus**, and turn on the data you want to share.
+
+**I forgot my password.** On the Sign In screen, tap **Forgot password?**, enter your email, and type the 6-digit code we email you along with a new password.
 
 **I signed in on a new phone and my progress isn't there.** Make sure you used the same email address, then go to **Settings › Account & Sync** and tap **Pull**.
 

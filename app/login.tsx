@@ -18,19 +18,24 @@ import { isSupabaseConfigured } from '../services/supabase';
 import { notify } from '../services/dialog';
 import { accentGradient } from '../theme/design';
 
-type Mode = 'signIn' | 'signUp';
+type Mode = 'signIn' | 'signUp' | 'reset';
 
 export type AuthOutcome = 'signIn' | 'signUp' | 'skip';
 
 export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => void } = {}) {
   const router = useRouter();
   const { accentColor, presetValues, fontSizes } = useTheme();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, sendPasswordReset, completePasswordReset } = useAuth();
 
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Password reset: step 1 emails a 6-digit code, step 2 checks it and sets
+  // the new password.
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
 
   // When mounted as a pre-onboarding gate, `onDone` advances the flow and
   // reports the outcome so the caller can decide whether to run onboarding
@@ -75,13 +80,150 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
         setPassword('');
         return;
       }
-      finish(mode);
+      finish(mode === 'signUp' ? 'signUp' : 'signIn');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startReset = () => {
+    setMode('reset');
+    setPassword('');
+    setCode('');
+    setCodeSent(false);
+  };
+
+  const backToSignIn = () => {
+    setMode('signIn');
+    setPassword('');
+    setCode('');
+    setCodeSent(false);
+  };
+
+  const handleSendCode = async () => {
+    if (!email.trim()) {
+      notify('Enter your email', 'Type the email you signed up with.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await sendPasswordReset(email);
+      if (error) {
+        notify('Couldn\'t send the code', error);
+        return;
+      }
+      setCodeSent(true);
+      notify('Check your email', `If an account exists for ${email.trim()}, we sent it a 6-digit code.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (code.trim().length < 6) {
+      notify('Enter the code', 'Type the 6-digit code from the email.');
+      return;
+    }
+    if (password.length < 6) {
+      notify('Weak password', 'Password must be at least 6 characters.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await completePasswordReset(email, code, password);
+      if (error) {
+        notify('Couldn\'t reset password', error);
+        return;
+      }
+      notify('Password updated', 'You\'re signed in with your new password.');
+      finish('signIn');
     } finally {
       setBusy(false);
     }
   };
 
   const isSignIn = mode === 'signIn';
+  const isReset = mode === 'reset';
+
+  const inputStyle = [styles.input, {
+    backgroundColor: presetValues.cardBg,
+    color: presetValues.text,
+    borderColor: presetValues.borderColor,
+    fontSize: fontSizes.base,
+  }];
+  const labelStyle = [styles.label, { color: presetValues.text, fontSize: fontSizes.base }];
+
+  const resetForm = (
+    <>
+      <Text style={labelStyle}>Email</Text>
+      <TextInput
+        style={inputStyle}
+        placeholder="you@example.com"
+        placeholderTextColor={presetValues.textSecondary}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        value={email}
+        onChangeText={setEmail}
+        editable={!codeSent}
+      />
+
+      {codeSent && (
+        <>
+          <Text style={labelStyle}>6-digit code</Text>
+          <TextInput
+            style={inputStyle}
+            placeholder="123456"
+            placeholderTextColor={presetValues.textSecondary}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            maxLength={6}
+            value={code}
+            onChangeText={setCode}
+          />
+
+          <Text style={labelStyle}>New password</Text>
+          <TextInput
+            style={inputStyle}
+            placeholder="At least 6 characters"
+            placeholderTextColor={presetValues.textSecondary}
+            secureTextEntry
+            autoCapitalize="none"
+            textContentType="newPassword"
+            value={password}
+            onChangeText={setPassword}
+          />
+        </>
+      )}
+
+      <TouchableOpacity
+        style={[styles.submitBtn, { backgroundColor: accentColor, opacity: busy ? 0.7 : 1 }]}
+        onPress={codeSent ? handleResetPassword : handleSendCode}
+        disabled={busy}
+      >
+        {busy
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={[styles.submitText, { fontSize: fontSizes.base }]}>
+              {codeSent ? 'Set New Password' : 'Send Code'}
+            </Text>}
+      </TouchableOpacity>
+
+      {codeSent && (
+        <TouchableOpacity onPress={handleSendCode} style={styles.skip} disabled={busy}>
+          <Text style={{ color: accentColor, fontSize: fontSizes.base - 1, fontWeight: '600' }}>
+            Send a new code
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity onPress={backToSignIn} style={styles.skip}>
+        <Text style={{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }}>
+          ← Back to sign in
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -91,12 +233,16 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <LinearGradient colors={accentGradient(accentColor)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <Text style={[styles.headerTitle, { fontSize: fontSizes.heading }]}>
-            {isSignIn ? 'Welcome back' : 'Create your account'}
+            {isReset ? 'Reset your password' : isSignIn ? 'Welcome back' : 'Create your account'}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {isSignIn
-              ? 'Sign in to sync your progress across devices.'
-              : 'Save your progress so it follows you anywhere.'}
+            {isReset
+              ? codeSent
+                ? 'Enter the code we emailed you and choose a new password.'
+                : 'We\'ll email you a 6-digit code.'
+              : isSignIn
+                ? 'Sign in to sync your progress across devices.'
+                : 'Save your progress so it follows you anywhere.'}
           </Text>
         </LinearGradient>
 
@@ -109,6 +255,8 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
             </View>
           )}
 
+          {isReset ? resetForm : (
+          <>
           <View style={[styles.tabs, { backgroundColor: presetValues.bgSecondary }]}>
             {(['signIn', 'signUp'] as Mode[]).map((m) => {
               const active = mode === m;
@@ -178,6 +326,14 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
                 </Text>}
           </TouchableOpacity>
 
+          {isSignIn && isSupabaseConfigured && (
+            <TouchableOpacity onPress={startReset} style={styles.skip}>
+              <Text style={{ color: accentColor, fontSize: fontSizes.base - 1, fontWeight: '600' }}>
+                Forgot password?
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity onPress={() => finish('skip')} style={styles.skip}>
             <Text style={[{ color: presetValues.textSecondary, fontSize: fontSizes.base - 1 }]}>
               Maybe later — keep using this device only
@@ -187,6 +343,8 @@ export default function Login({ onDone }: { onDone?: (outcome: AuthOutcome) => v
           <Text style={[styles.fineprint, { color: presetValues.textSecondary, fontSize: fontSizes.base - 2 }]}>
             Your existing progress on this device will be uploaded the first time you sign in, so nothing is lost.
           </Text>
+          </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
